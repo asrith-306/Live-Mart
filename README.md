@@ -22,3 +22,4 @@ It is built using **Vite**, **React**, and **Supabase** for authentication and d
 ## Contributors
 - [Dandu Asrith](https://github.com/asrith-306/)
 - [Himangi Agrawal](https://github.com/himangi05)
+- [Tanmayi Bijjala](https://github.com/Tanmayi-186)
