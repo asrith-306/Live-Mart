@@ -9,6 +9,22 @@ export type SignupForm = {
   location?: string
 }
 
+export async function loginUser({
+  email,
+  password,
+}: {
+  email: string
+  password: string
+}) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  })
+
+  if (error) throw new Error(error.message)
+  return data
+}
+
 export async function signUpUser(form: SignupForm) {
   // Step 1: Sign up in Supabase Auth
   const { data: authData, error: authError } = await supabase.auth.signUp({
