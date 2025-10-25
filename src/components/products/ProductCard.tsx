@@ -1,4 +1,5 @@
-// src/components/products/ProductCard.tsx
+import { useState } from 'react';
+import { useCart } from '@/context/CartContext';
 import { Product } from '@/services/productService';
 
 interface ProductCardProps {
@@ -20,6 +21,9 @@ const ProductCard = ({
   isRetailer = false,
   isTrashView = false
 }: ProductCardProps) => {
+  const { addToCart } = useCart();
+  const [quantity, setQuantity] = useState(1);
+  const [added, setAdded] = useState(false);
   
   const handleDelete = () => {
     console.log('ProductCard: Delete clicked for:', product.id);
@@ -49,6 +53,16 @@ const ProductCard = ({
     if (product.id && onPermanentDelete) {
       onPermanentDelete(product.id);
     }
+  };
+
+  const handleAddToCart = () => {
+    console.log('handleAddToCart clicked for product:', product);
+    console.log('Quantity:', quantity);
+    console.log('addToCart function exists?', typeof addToCart);
+    
+    addToCart(product, quantity);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
   };
 
   return (
@@ -119,11 +133,42 @@ const ProductCard = ({
         </div>
       )}
       
-      {/* Customer View Button */}
-      {!isRetailer && product.stock > 0 && !isTrashView && (
-        <button className="w-full bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600">
-          Add to Cart
-        </button>
+      {/* Customer View - Add to Cart with Quantity */}
+      {!isRetailer && !isTrashView && (
+        <div className="space-y-2">
+          {product.stock > 0 ? (
+            <>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-semibold">Qty:</label>
+                <input
+                  type="number"
+                  min="1"
+                  max={product.stock}
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="border rounded px-2 py-1 w-20 text-center"
+                />
+              </div>
+              <button 
+                onClick={handleAddToCart}
+                className={`w-full py-2 rounded-lg font-semibold transition-colors ${
+                  added
+                    ? 'bg-green-500 text-white'
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                }`}
+              >
+                {added ? '✓ Added to Cart' : '🛒 Add to Cart'}
+              </button>
+            </>
+          ) : (
+            <button 
+              disabled
+              className="w-full bg-gray-300 text-gray-500 px-3 py-2 rounded cursor-not-allowed"
+            >
+              Out of Stock
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
