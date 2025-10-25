@@ -1,41 +1,36 @@
-import { useEffect, useState } from "react"
-import { supabase } from "./supabaseClient"
+import { useState } from 'react';
+import RetailerDashboard from '@/components/dashboards/RetailerDashboard';
+import CustomerDashboard from '@/components/dashboards/CustomerDashboard';
 
 function App() {
-  const [users, setUsers] = useState([])
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      const { data, error } = await supabase
-        .from("Products") // 👈 replace with your table name
-        .select("id, name")
-
-      if (error) {
-        console.error("Error fetching data:", error.message)
-      } else {
-        setUsers(data)
-      }
-    }
-
-    fetchUsers()
-  }, [])
+  const [view, setView] = useState<'retailer' | 'customer'>('retailer');
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial" }}>
-      <h1>👥 User List</h1>
-      <ul>
-        {users.length > 0 ? (
-          users.map((user) => (
-            <li key={user.id}>
-              {user.id} — {user.name}
-            </li>
-          ))
-        ) : (
-          <p>No data found</p>
-        )}
-      </ul>
+    <div className="min-h-screen bg-gray-100">
+      <nav className="bg-white shadow-md p-4 mb-4">
+        <div className="flex gap-4 justify-center">
+          <button
+            onClick={() => setView('retailer')}
+            className={`px-6 py-2 rounded ${
+              view === 'retailer' ? 'bg-blue-500 text-white' : 'bg-gray-200'
+            }`}
+          >
+            Retailer View
+          </button>
+          <button
+            onClick={() => setView('customer')}
+            className={`px-6 py-2 rounded ${
+              view === 'customer' ? 'bg-blue-500 text-white' : 'bg-gray-200'
+            }`}
+          >
+            Customer View
+          </button>
+        </div>
+      </nav>
+
+      {view === 'retailer' ? <RetailerDashboard /> : <CustomerDashboard />}
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
