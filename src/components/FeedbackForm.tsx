@@ -3,62 +3,56 @@ import { supabase } from "../supabaseClient";
 
 interface FeedbackFormProps {
   productId: string;
-  userId: string; // logged-in user ID or demo ID
+  userId: string;
 }
 
 export default function FeedbackForm({ productId, userId }: FeedbackFormProps) {
-  const [rating, setRating] = useState(5);
+  const [rating, setRating] = useState<number>(5);
   const [comment, setComment] = useState("");
-  const [loading, setLoading] = useState(false);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [userName, setUserName] = useState<string>("");
 
-  // 🧠 Load existing feedbacks for this product
-  async function loadFeedback() {
-    const { data, error } = await supabase
-      .from("feedback")
-      .select("*")
-      .eq("product_id", productId)
-      .order("created_at", { ascending: false });
-
-    if (!error && data) setFeedbacks(data);
-    else console.error("Error loading feedback:", error);
-  }
-
+  // 🧠 Fetch logged-in user's name from 'users' table
   useEffect(() => {
-    loadFeedback();
-  }, [productId]);
+    async function fetchUserName() {
+      const { data, error } = await supabase
+        .from("users")
+        .select("username")
+        .eq("id", userId)
+        .single();
 
-  // ⚡ Real-time updates for new feedbacks
-  useEffect(() => {
-    const channel = supabase
-      .channel("feedback-updates")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "feedback" },
-        (payload) => {
-          if (payload.new.product_id === productId) {
-            // Add new feedback instantly
-            setFeedbacks((prev) => [payload.new, ...prev]);
-            alert("🆕 New feedback added!");
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [productId]);
-
-  // 📝 Handle feedback submission
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!comment.trim()) {
-      alert("⚠️ Please write a comment before submitting.");
-      return;
+      if (error) console.error("Error fetching username:", error.message);
+      else if (data?.username) setUserName(data.username);
+      else setUserName("Anonymous"); // fallback
     }
 
-    setLoading(true);
+    fetchUserName();
+  }, [userId]);
+
+  // 🔍 Fetch all feedback for the product
+  useEffect(() => {
+    async function fetchFeedback() {
+      const { data, error } = await supabase
+        .from("feedback")
+        .select("rating, comment, user_name")
+        .eq("product_id", productId)
+        .order("created_at", { ascending: false });
+
+      if (error) console.error("Error fetching feedback:", error.message);
+      else setFeedbacks(data || []);
+    }
+
+    if (productId) fetchFeedback();
+  }, [productId]);
+
+  // 💾 Submit new feedback
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!comment.trim()) {
+      alert("Please write something before submitting!");
+      return;
+    }
 
     const { error } = await supabase.from("feedback").insert([
       {
@@ -66,78 +60,109 @@ export default function FeedbackForm({ productId, userId }: FeedbackFormProps) {
         customer_id: userId,
         rating,
         comment,
+        user_name: userName || "Anonymous", // ensure always has a value
       },
     ]);
 
-    setLoading(false);
-
     if (error) {
-      alert("❌ Error adding feedback: " + error.message);
-      console.error(error);
+      console.error("Supabase error:", error);
+      alert("❌ Failed to submit feedback: " + error.message);
     } else {
-      alert("✅ Thanks for your feedback!");
+      alert("✅ Feedback submitted successfully!");
       setComment("");
       setRating(5);
-      loadFeedback(); // refresh list
+
+      // Refresh feedback list
+      const { data } = await supabase
+        .from("feedback")
+        .select("rating, comment, user_name")
+        .eq("product_id", productId)
+        .order("created_at", { ascending: false });
+
+      setFeedbacks(data || []);
     }
   }
 
   return (
-    <div className="p-4 border rounded-xl shadow-sm mt-4 bg-white">
-      {/* 🧾 Feedback form */}
+    <div style={{ marginTop: "1rem" }}>
+      {/* Feedback Form */}
       <form onSubmit={handleSubmit}>
-        <label className="font-semibold">Rating:</label>
-        <select
-          value={rating}
-          onChange={(e) => setRating(Number(e.target.value))}
-          className="ml-2 border rounded p-1"
-        >
-          {[5, 4, 3, 2, 1].map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
+        <label style={{ display: "block", marginBottom: "0.5rem" }}>
+          Rating:
+          <select
+            value={rating}
+            onChange={(e) => setRating(Number(e.target.value))}
+            style={{
+              marginLeft: "10px",
+              padding: "4px",
+              borderRadius: "6px",
+              border: "1px solid #ccc",
+            }}
+          >
+            {[5, 4, 3, 2, 1].map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <textarea
-          className="block w-full border mt-3 p-2 rounded"
-          value={comment}
           placeholder="Write your review..."
+          value={comment}
           onChange={(e) => setComment(e.target.value)}
+          style={{
+            display: "block",
+            width: "100%",
+            height: "80px",
+            margin: "10px 0",
+            padding: "8px",
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+          }}
         />
 
         <button
-          className="mt-3 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
           type="submit"
-          disabled={loading}
+          style={{
+            backgroundColor: "#007bff",
+            color: "white",
+            border: "none",
+            padding: "8px 16px",
+            borderRadius: "6px",
+            cursor: "pointer",
+          }}
         >
-          {loading ? "Submitting..." : "Submit Feedback"}
+          Submit Feedback
         </button>
       </form>
 
-      {/* 💬 Display existing feedbacks */}
-      <div className="mt-5">
-        <h4 className="font-semibold mb-2 text-lg">Customer Reviews</h4>
-        {feedbacks.length > 0 ? (
-          <ul className="space-y-2">
-            {feedbacks.map((f) => (
+      {/* Feedback List */}
+      <h4 style={{ marginTop: "1.5rem", fontWeight: "bold" }}>
+        Customer Reviews
+      </h4>
+
+      {feedbacks.length > 0 ? (
+        <ul style={{ listStyle: "none", padding: 0 }}>
+          {feedbacks.map((f, i) => {
+            const displayName = f.user_name || "Anonymous";
+            return (
               <li
-                key={f.id}
-                className="border-b pb-2 text-sm text-gray-700 flex flex-col"
+                key={i}
+                style={{
+                  borderBottom: "1px solid #ddd",
+                  padding: "8px 0",
+                  fontSize: "15px",
+                }}
               >
-                <span>
-                  ⭐ <b>{f.rating}</b>/5 — {f.comment}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {f.customer_id ? f.customer_id.slice(0, 8) : "Anonymous"}
-                </span>
+                ⭐ {f.rating}/5 — {f.comment || "No comment"} — {displayName}
               </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-gray-500 text-sm">No reviews yet.</p>
-        )}
-      </div>
+            );
+          })}
+        </ul>
+      ) : (
+        <p>No feedback yet.</p>
+      )}
     </div>
   );
 }

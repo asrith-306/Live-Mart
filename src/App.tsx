@@ -16,11 +16,31 @@ type Product = {
 function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  // Temporary user id (replace later with real logged-in user)
-  const userId = "123e4567-e89b-12d3-a456-426614174000";
+  // 🧠 Get the logged-in user from Supabase Auth
+  useEffect(() => {
+    async function getUser() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) setUserId(user.id);
+      else setUserId(null);
+    }
 
-  // Fetch products on load
+    getUser();
+
+    // Also listen for login/logout events
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user?.id || null);
+    });
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  // 🛍 Fetch all products
   useEffect(() => {
     async function fetchProducts() {
       const { data, error } = await supabase
@@ -37,9 +57,9 @@ function App() {
 
   return (
     <Router>
-      <div style={{ padding: "20px", fontFamily: "Arial" }}>
+      <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
         <Routes>
-          {/* 🏠 Welcome Page */}
+          {/* 🏠 Home Page */}
           <Route
             path="/"
             element={
@@ -48,19 +68,13 @@ function App() {
                 <hr style={{ margin: "20px 0" }} />
                 <div style={{ display: "flex", gap: "10px" }}>
                   <Link to="/signup">
-                    <button style={{ padding: "10px 20px", fontSize: "16px" }}>
-                      📝 Go to Signup
-                    </button>
+                    <button style={{ padding: "10px 20px" }}>📝 Signup</button>
                   </Link>
                   <Link to="/login">
-                    <button style={{ padding: "10px 20px", fontSize: "16px" }}>
-                      🔐 Go to Login
-                    </button>
+                    <button style={{ padding: "10px 20px" }}>🔐 Login</button>
                   </Link>
                   <Link to="/dashboard">
-                    <button style={{ padding: "10px 20px", fontSize: "16px" }}>
-                      🛒 Go to Dashboard
-                    </button>
+                    <button style={{ padding: "10px 20px" }}>🛒 Dashboard</button>
                   </Link>
                 </div>
               </div>
@@ -89,43 +103,27 @@ function App() {
             }
           />
 
-          {/* 🛒 Dashboard (Search + Feedback module) */}
+          {/* 🛒 Dashboard */}
           <Route
             path="/dashboard"
             element={
               <div
                 style={{
                   padding: "30px",
-                  fontFamily: "Arial, sans-serif",
                   maxWidth: "800px",
                   margin: "0 auto",
                 }}
               >
-                <h1
-                  style={{
-                    fontSize: "1.8rem",
-                    fontWeight: "bold",
-                    marginBottom: "1rem",
-                  }}
-                >
+                <h1 style={{ fontWeight: "bold", marginBottom: "1rem" }}>
                   🛍️ Live-Mart Dashboard
                 </h1>
 
-                {/* 🔍 Search feature */}
                 <SearchBar />
 
-                <h2
-                  style={{
-                    marginTop: "2rem",
-                    fontSize: "1.3rem",
-                    fontWeight: "bold",
-                    marginBottom: "0.5rem",
-                  }}
-                >
+                <h2 style={{ marginTop: "2rem", marginBottom: "0.5rem" }}>
                   All Products
                 </h2>
 
-                {/* 🧾 Product list */}
                 <ul style={{ listStyle: "none", padding: 0 }}>
                   {products.length > 0 ? (
                     products.map((p) => (
@@ -151,7 +149,6 @@ function App() {
                   )}
                 </ul>
 
-                {/* 💬 Feedback Form for selected product */}
                 {selectedProduct && (
                   <div
                     style={{
@@ -161,18 +158,21 @@ function App() {
                       borderRadius: "8px",
                     }}
                   >
-                    <h3
-                      style={{
-                        fontWeight: "bold",
-                        marginBottom: "0.5rem",
-                      }}
-                    >
+                    <h3 style={{ fontWeight: "bold", marginBottom: "0.5rem" }}>
                       Leave feedback for: {selectedProduct.name}
                     </h3>
-                    <FeedbackForm
-                      productId={selectedProduct.id}
-                      userId={userId}
-                    />
+
+                    {userId ? (
+                      <FeedbackForm
+                        productId={selectedProduct.id}
+                        userId={userId}
+                      />
+                    ) : (
+                      <p style={{ color: "red" }}>
+                        ⚠️ Please log in to submit feedback.
+                      </p>
+                    )}
+
                     <button
                       onClick={() => setSelectedProduct(null)}
                       style={{
