@@ -1,11 +1,10 @@
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { supabase } from "./utils/supabaseClient"
-import Signup from "./Signup.js";
-import Login from "./login.js";
+import { supabase } from "./utils/supabaseClient";
+import Signup from "./Signup";
+import Login from "./login";
 import SearchBar from "./components/SearchBar";
 import FeedbackForm from "./components/FeedbackForm";
-import Navigation from "./components/Navigation";
 import HomePage from "./components/HomePage";
 import RetailerDashboard from "./components/dashboards/RetailerDashboard";
 import CustomerDashboard from "./components/dashboards/CustomerDashboard";
@@ -23,6 +22,7 @@ type Product = {
 };
 
 // Enhanced Navbar with both authentication and view switching
+// Simple Navbar - just logo and user actions
 function Navbar({ isLoggedIn, onLogout }: { isLoggedIn: boolean; onLogout: () => void }) {
   const { getCartCount } = useCart();
   const navigate = useNavigate();
@@ -39,77 +39,69 @@ function Navbar({ isLoggedIn, onLogout }: { isLoggedIn: boolean; onLogout: () =>
   };
 
   return (
-    <nav className="bg-white shadow-md p-4 mb-4">
+    <nav className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg p-4 mb-0">
       <div className="container mx-auto flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold text-blue-500">
+        <button 
+          onClick={() => navigate("/")}
+          className="text-2xl font-bold text-white hover:scale-105 transition-transform cursor-pointer flex items-center gap-2"
+        >
           Live MART
-        </Link>
+        </button>
 
-        <div className="flex gap-4 items-center">
-          {/* Show view switcher only if logged in */}
-          {isLoggedIn && (
-            <>
-              <button
-                onClick={() => handleViewChange('customer')}
-                className={`px-4 py-2 rounded ${
-                  view === 'customer' ? 'bg-blue-500 text-white' : 'bg-gray-200'
-                }`}
-              >
-                Customer View
-              </button>
-              <button
-                onClick={() => handleViewChange('retailer')}
-                className={`px-4 py-2 rounded ${
-                  view === 'retailer' ? 'bg-blue-500 text-white' : 'bg-gray-200'
-                }`}
-              >
-                Retailer View
-              </button>
-            </>
-          )}
+        {/* Only show these when logged in */}
+        {isLoggedIn && (
+          <div className="flex gap-4 items-center">
+            <button
+              onClick={() => handleViewChange('customer')}
+              className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                view === 'customer' 
+                  ? 'bg-white text-blue-600 shadow-md' 
+                  : 'bg-blue-500 text-white hover:bg-blue-400'
+              }`}
+            >
+              Customer View
+            </button>
+            <button
+              onClick={() => handleViewChange('retailer')}
+              className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                view === 'retailer' 
+                  ? 'bg-white text-purple-600 shadow-md' 
+                  : 'bg-purple-500 text-white hover:bg-purple-400'
+              }`}
+            >
+              Retailer View
+            </button>
 
-          {/* Customer-specific navigation */}
-          {isLoggedIn && view === 'customer' && (
-            <>
-              <Link
-                to="/orders"
-                className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
-              >
-                My Orders
-              </Link>
-              <Link
-                to="/cart"
-                className="relative px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600"
-              >
-                🛒 Cart
-                {getCartCount() > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                    {getCartCount()}
-                  </span>
-                )}
-              </Link>
-            </>
-          )}
+            {view === 'customer' && (
+              <>
+                <button
+                  onClick={() => navigate('/orders')}
+                  className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold"
+                >
+                  My Orders
+                </button>
+                <button
+                  onClick={() => navigate('/cart')}
+                  className="relative px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-300 transition-all font-semibold"
+                >
+                  🛒 Cart
+                  {getCartCount() > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
+                      {getCartCount()}
+                    </span>
+                  )}
+                </button>
+              </>
+            )}
 
-          {/* Auth buttons */}
-          {isLoggedIn ? (
             <button
               onClick={handleLogoutClick}
-              className="px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600"
+              className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all font-semibold"
             >
               Logout
             </button>
-          ) : (
-            <>
-              <Link to="/login" className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">
-                Login
-              </Link>
-              <Link to="/signup" className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600">
-                Sign Up
-              </Link>
-            </>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </nav>
   );
