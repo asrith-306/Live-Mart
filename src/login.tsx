@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { loginUser, loginWithGoogle, checkUserExists, createUserProfile } from "./services/authService.js"
-import { supabase } from "./supabaseClient.js"
+import { supabase } from "./utils/supabaseClient"
 
 type LoginForm = { email: string; password: string }
 
@@ -11,7 +12,12 @@ type ProfileForm = {
   location: string
 }
 
-export default function Login() {
+interface LoginProps {
+  onLogin?: (id: string) => void;
+}
+
+export default function Login({ onLogin }: LoginProps) {
+  const navigate = useNavigate();
   const [form, setForm] = useState<LoginForm>({ email: "", password: "" })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,13 +59,24 @@ export default function Login() {
     setProfile(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
     try {
-      await loginUser(form)
+      const result = await loginUser(form)
       setSuccess(true)
+      
+      // ADD THESE LINES:
+      if (result.user && onLogin) {
+        onLogin(result.user.id);
+      }
+      
+      // Redirect to dashboard after successful login
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 500);
+      
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -67,7 +84,7 @@ export default function Login() {
     }
   }
 
-  const handleGoogleLogin = async () => {
+ const handleGoogleLogin = async () => {
     try {
       await loginWithGoogle()
     } catch (err: any) {
@@ -75,7 +92,7 @@ export default function Login() {
     }
   }
 
-  const handleProfileSubmit = async (e: React.FormEvent) => {
+    const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
@@ -93,6 +110,13 @@ export default function Login() {
       })
       setSuccess(true)
       setShowProfileForm(false)
+      
+      // ADD THESE LINES:
+      if (onLogin) {
+        onLogin(user.id);
+      }
+      navigate("/dashboard");
+      
     } catch (err: any) {
       setError(err.message)
     } finally {
