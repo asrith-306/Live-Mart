@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { loginUser, loginWithGoogle, checkUserExists, createUserProfile } from "./services/authService.js"
-import { supabase } from "./supabaseClient.js"
+import { supabase } from "./utils/supabaseClient"
 
 type LoginForm = { email: string; password: string }
 

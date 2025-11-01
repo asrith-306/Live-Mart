@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { signUpUser, signInWithGoogle } from "./services/authService.js"
+import { supabase } from "./utils/supabaseClient"
 
 type SignupForm = {
   name: string

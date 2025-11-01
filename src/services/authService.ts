@@ -1,4 +1,4 @@
-import { supabase } from '../supabaseClient.js'
+import { supabase } from '@/utils/supabaseClient';
 
 export type SignupForm = {
   name: string

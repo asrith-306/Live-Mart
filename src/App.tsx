@@ -1,12 +1,19 @@
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { supabase } from "./supabaseClient";
+import { supabase } from "./utils/supabaseClient"
 import Signup from "./Signup.js";
 import Login from "./login.js";
 import SearchBar from "./components/SearchBar";
 import FeedbackForm from "./components/FeedbackForm";
 import Navigation from "./components/Navigation";
 import HomePage from "./components/HomePage";
+import RetailerDashboard from "./components/dashboards/RetailerDashboard";
+import CustomerDashboard from "./components/dashboards/CustomerDashboard";
+import Cart from "./pages/Cart";
+import Checkout from "./pages/Checkout";
+import OrderSuccess from "./pages/OrderSuccess";
+import Orders from "./pages/Orders";
+import { useCart } from "./context/CartContext";
 
 type Product = {
   id: string;
@@ -14,6 +21,99 @@ type Product = {
   price?: number;
   category?: string;
 };
+
+// Enhanced Navbar with both authentication and view switching
+function Navbar({ isLoggedIn, onLogout }: { isLoggedIn: boolean; onLogout: () => void }) {
+  const { getCartCount } = useCart();
+  const navigate = useNavigate();
+  const [view, setView] = useState<'retailer' | 'customer'>('customer');
+
+  const handleViewChange = (newView: 'retailer' | 'customer') => {
+    setView(newView);
+    navigate(newView === 'retailer' ? '/retailer' : '/customer');
+  };
+
+  const handleLogoutClick = () => {
+    onLogout();
+    navigate("/");
+  };
+
+  return (
+    <nav className="bg-white shadow-md p-4 mb-4">
+      <div className="container mx-auto flex justify-between items-center">
+        <Link to="/" className="text-2xl font-bold text-blue-500">
+          Live MART
+        </Link>
+
+        <div className="flex gap-4 items-center">
+          {/* Show view switcher only if logged in */}
+          {isLoggedIn && (
+            <>
+              <button
+                onClick={() => handleViewChange('customer')}
+                className={`px-4 py-2 rounded ${
+                  view === 'customer' ? 'bg-blue-500 text-white' : 'bg-gray-200'
+                }`}
+              >
+                Customer View
+              </button>
+              <button
+                onClick={() => handleViewChange('retailer')}
+                className={`px-4 py-2 rounded ${
+                  view === 'retailer' ? 'bg-blue-500 text-white' : 'bg-gray-200'
+                }`}
+              >
+                Retailer View
+              </button>
+            </>
+          )}
+
+          {/* Customer-specific navigation */}
+          {isLoggedIn && view === 'customer' && (
+            <>
+              <Link
+                to="/orders"
+                className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
+              >
+                My Orders
+              </Link>
+              <Link
+                to="/cart"
+                className="relative px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600"
+              >
+                🛒 Cart
+                {getCartCount() > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                    {getCartCount()}
+                  </span>
+                )}
+              </Link>
+            </>
+          )}
+
+          {/* Auth buttons */}
+          {isLoggedIn ? (
+            <button
+              onClick={handleLogoutClick}
+              className="px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600"
+            >
+              Logout
+            </button>
+          ) : (
+            <>
+              <Link to="/login" className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">
+                Login
+              </Link>
+              <Link to="/signup" className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600">
+                Sign Up
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
+    </nav>
+  );
+}
 
 function App() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -77,9 +177,9 @@ function App() {
 
   return (
     <Router>
-      <Navigation isLoggedIn={isLoggedIn} onLogout={handleLogout} />
-      
-      <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
+      <div className="min-h-screen bg-gray-100">
+        <Navbar isLoggedIn={isLoggedIn} onLogout={handleLogout} />
+        
         <Routes>
           {/* 🏠 Home Page */}
           <Route path="/" element={<HomePage isLoggedIn={isLoggedIn} />} />
@@ -90,7 +190,19 @@ function App() {
           {/* 🔐 Login Page */}
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
           
-          {/* 🛒 Dashboard */}
+          {/* 🛒 Customer Dashboard */}
+          <Route path="/customer" element={<CustomerDashboard />} />
+          
+          {/* 🏪 Retailer Dashboard */}
+          <Route path="/retailer" element={<RetailerDashboard />} />
+          
+          {/* 🛒 Cart & Orders */}
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/order-success/:orderId" element={<OrderSuccess />} />
+          <Route path="/orders" element={<Orders />} />
+          
+          {/* 🛒 Original Dashboard with Feedback */}
           <Route
             path="/dashboard"
             element={
