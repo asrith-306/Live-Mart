@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "./utils/supabaseClient";
 import Signup from "./Signup";
@@ -21,17 +21,46 @@ type Product = {
   category?: string;
 };
 
-// Enhanced Navbar with both authentication and view switching
-// Simple Navbar - just logo and user actions
-function Navbar({ isLoggedIn, onLogout }: { isLoggedIn: boolean; onLogout: () => void }) {
+type UserRole = "customer" | "retailer" | "wholesaler" | null;
+
+// Protected Route Component
+function ProtectedRoute({ 
+  children, 
+  allowedRoles, 
+  userRole 
+}: { 
+  children: React.ReactNode; 
+  allowedRoles: UserRole[]; 
+  userRole: UserRole;
+}) {
+  if (!userRole) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (!allowedRoles.includes(userRole)) {
+    // Redirect to appropriate dashboard based on role
+    if (userRole === "customer") {
+      return <Navigate to="/customer" replace />;
+    } else if (userRole === "retailer" || userRole === "wholesaler") {
+      return <Navigate to="/retailer" replace />;
+    }
+  }
+  
+  return <>{children}</>;
+}
+
+// Enhanced Navbar
+function Navbar({ 
+  isLoggedIn, 
+  onLogout, 
+  userRole 
+}: { 
+  isLoggedIn: boolean; 
+  onLogout: () => void;
+  userRole: UserRole;
+}) {
   const { getCartCount } = useCart();
   const navigate = useNavigate();
-  const [view, setView] = useState<'retailer' | 'customer'>('customer');
-
-  const handleViewChange = (newView: 'retailer' | 'customer') => {
-    setView(newView);
-    navigate(newView === 'retailer' ? '/retailer' : '/customer');
-  };
 
   const handleLogoutClick = () => {
     onLogout();
@@ -45,35 +74,21 @@ function Navbar({ isLoggedIn, onLogout }: { isLoggedIn: boolean; onLogout: () =>
           onClick={() => navigate("/")}
           className="text-2xl font-bold text-white hover:scale-105 transition-transform cursor-pointer flex items-center gap-2"
         >
-          Live MART
+          🛒 Live MART
         </button>
 
         {/* Only show these when logged in */}
         {isLoggedIn && (
           <div className="flex gap-4 items-center">
-            <button
-              onClick={() => handleViewChange('customer')}
-              className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                view === 'customer' 
-                  ? 'bg-white text-blue-600 shadow-md' 
-                  : 'bg-blue-500 text-white hover:bg-blue-400'
-              }`}
-            >
-              Customer View
-            </button>
-            <button
-              onClick={() => handleViewChange('retailer')}
-              className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                view === 'retailer' 
-                  ? 'bg-white text-purple-600 shadow-md' 
-                  : 'bg-purple-500 text-white hover:bg-purple-400'
-              }`}
-            >
-              Retailer View
-            </button>
-
-            {view === 'customer' && (
+            {/* Show role-specific buttons */}
+            {userRole === "customer" && (
               <>
+                <button
+                  onClick={() => navigate('/customer')}
+                  className="px-4 py-2 rounded-lg bg-white text-blue-600 shadow-md font-semibold"
+                >
+                  My Dashboard
+                </button>
                 <button
                   onClick={() => navigate('/orders')}
                   className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold"
@@ -94,6 +109,15 @@ function Navbar({ isLoggedIn, onLogout }: { isLoggedIn: boolean; onLogout: () =>
               </>
             )}
 
+            {(userRole === "retailer" || userRole === "wholesaler") && (
+              <button
+                onClick={() => navigate('/retailer')}
+                className="px-4 py-2 rounded-lg bg-white text-purple-600 shadow-md font-semibold"
+              >
+                Retailer Dashboard
+              </button>
+            )}
+
             <button
               onClick={handleLogoutClick}
               className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all font-semibold"
@@ -112,6 +136,7 @@ function App() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole>(null);
 
   // 🧠 Get the logged-in user from Supabase Auth
   useEffect(() => {
@@ -119,21 +144,51 @@ function App() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      
       if (user) {
         setUserId(user.id);
         setIsLoggedIn(true);
+        
+        // Fetch user role from users table
+        const { data: userData } = await supabase
+          .from("users")
+          .select("role")
+          .eq("auth_id", user.id)
+          .single();
+        
+        if (userData) {
+          setUserRole(userData.role as UserRole);
+        }
       } else {
         setUserId(null);
         setIsLoggedIn(false);
+        setUserRole(null);
       }
     }
 
     getUser();
 
     // Also listen for login/logout events
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user?.id || null);
-      setIsLoggedIn(!!session?.user);
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        setUserId(session.user.id);
+        setIsLoggedIn(true);
+        
+        // Fetch user role
+        const { data: userData } = await supabase
+          .from("users")
+          .select("role")
+          .eq("auth_id", session.user.id)
+          .single();
+        
+        if (userData) {
+          setUserRole(userData.role as UserRole);
+        }
+      } else {
+        setUserId(null);
+        setIsLoggedIn(false);
+        setUserRole(null);
+      }
     });
 
     return () => {
@@ -156,21 +211,33 @@ function App() {
     fetchProducts();
   }, []);
 
-  const handleLogin = (id: string) => {
+  const handleLogin = async (id: string) => {
     setUserId(id);
     setIsLoggedIn(true);
+    
+    // Fetch user role after login
+    const { data: userData } = await supabase
+      .from("users")
+      .select("role")
+      .eq("auth_id", id)
+      .single();
+    
+    if (userData) {
+      setUserRole(userData.role as UserRole);
+    }
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUserId(null);
     setIsLoggedIn(false);
+    setUserRole(null);
   };
 
   return (
     <Router>
       <div className="min-h-screen bg-gray-100">
-        <Navbar isLoggedIn={isLoggedIn} onLogout={handleLogout} />
+        <Navbar isLoggedIn={isLoggedIn} onLogout={handleLogout} userRole={userRole} />
         
         <Routes>
           {/* 🏠 Home Page */}
@@ -180,19 +247,61 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           
           {/* 🔐 Login Page */}
-          <Route path="/login" element={<Login onLogin={handleLogin} />} />
+          <Route path="/login" element={<Login onLogin={handleLogin} userRole={userRole} />} />
           
-          {/* 🛒 Customer Dashboard */}
-          <Route path="/customer" element={<CustomerDashboard />} />
+          {/* 🛒 Customer Dashboard - Only for customers */}
+          <Route 
+            path="/customer" 
+            element={
+              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
+                <CustomerDashboard />
+              </ProtectedRoute>
+            } 
+          />
           
-          {/* 🏪 Retailer Dashboard */}
-          <Route path="/retailer" element={<RetailerDashboard />} />
+          {/* 🏪 Retailer Dashboard - Only for retailers/wholesalers */}
+          <Route 
+            path="/retailer" 
+            element={
+              <ProtectedRoute allowedRoles={["retailer", "wholesaler"]} userRole={userRole}>
+                <RetailerDashboard />
+              </ProtectedRoute>
+            } 
+          />
           
-          {/* 🛒 Cart & Orders */}
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/order-success/:orderId" element={<OrderSuccess />} />
-          <Route path="/orders" element={<Orders />} />
+          {/* 🛒 Cart & Orders - Only for customers */}
+          <Route 
+            path="/cart" 
+            element={
+              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
+                <Cart />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/checkout" 
+            element={
+              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
+                <Checkout />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/order-success/:orderId" 
+            element={
+              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
+                <OrderSuccess />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/orders" 
+            element={
+              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
+                <Orders />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* 🛒 Original Dashboard with Feedback */}
           <Route

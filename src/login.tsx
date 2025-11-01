@@ -14,6 +14,7 @@ type ProfileForm = {
 
 interface LoginProps {
   onLogin?: (id: string) => void;
+  userRole?: string | null;
 }
 
 export default function Login({ onLogin }: LoginProps) {
@@ -42,11 +43,22 @@ export default function Login({ onLogin }: LoginProps) {
         setShowProfileForm(true)
       } else {
         if (onLogin) onLogin(user.id);
-        navigate("/customer");
+        // Redirect based on role
+        redirectBasedOnRole(existing.role);
       }
     }
     checkSession()
   }, [])
+
+  const redirectBasedOnRole = (role: string) => {
+    if (role === "customer") {
+      navigate("/customer");
+    } else if (role === "retailer" || role === "wholesaler") {
+      navigate("/retailer");
+    } else {
+      navigate("/customer"); // default
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -69,8 +81,18 @@ export default function Login({ onLogin }: LoginProps) {
         onLogin(result.user.id);
       }
       
-      // Redirect immediately
-      navigate("/customer");
+      // Fetch user role and redirect accordingly
+      const { data: userData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("auth_id", result.user.id)
+        .single();
+      
+      if (userData) {
+        redirectBasedOnRole(userData.role);
+      } else {
+        navigate("/customer"); // default
+      }
       
     } catch (err: any) {
       setError(err.message)
@@ -107,7 +129,9 @@ export default function Login({ onLogin }: LoginProps) {
       if (onLogin) {
         onLogin(user.id);
       }
-      navigate("/customer");
+      
+      // Redirect based on selected role
+      redirectBasedOnRole(profile.role);
       
     } catch (err: any) {
       setError(err.message)
