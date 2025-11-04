@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { loginUser, loginWithGoogle, checkUserExists, createUserProfile } from "./services/authService.js"
+import { loginUser, loginWithGoogle, checkUserExists, createUserProfile } from "./services/authService"
 import { supabase } from "./utils/supabaseClient"
 
 type LoginForm = { email: string; password: string }
@@ -14,6 +14,7 @@ type ProfileForm = {
 
 interface LoginProps {
   onLogin?: (id: string) => void;
+  userRole?: string | null;
 }
 
 export default function Login({ onLogin }: LoginProps) {
@@ -21,7 +22,6 @@ export default function Login({ onLogin }: LoginProps) {
   const [form, setForm] = useState<LoginForm>({ email: "", password: "" })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
   const [showProfileForm, setShowProfileForm] = useState(false)
   const [profile, setProfile] = useState<ProfileForm>({
     name: "",
@@ -40,14 +40,25 @@ export default function Login({ onLogin }: LoginProps) {
       // Check if user exists in users table
       const existing = await checkUserExists(user.id)
       if (!existing) {
-        // Show profile form
         setShowProfileForm(true)
       } else {
-        setSuccess(true)
+        if (onLogin) onLogin(user.id);
+        // Redirect based on role
+        redirectBasedOnRole(existing.role);
       }
     }
     checkSession()
   }, [])
+
+  const redirectBasedOnRole = (role: string) => {
+    if (role === "customer") {
+      navigate("/customer");
+    } else if (role === "retailer" || role === "wholesaler") {
+      navigate("/retailer");
+    } else {
+      navigate("/customer"); // default
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -59,23 +70,29 @@ export default function Login({ onLogin }: LoginProps) {
     setProfile(prev => ({ ...prev, [name]: value }))
   }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
     try {
       const result = await loginUser(form)
-      setSuccess(true)
       
-      // ADD THESE LINES:
       if (result.user && onLogin) {
         onLogin(result.user.id);
       }
       
-      // Redirect to dashboard after successful login
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 500);
+      // Fetch user role and redirect accordingly
+      const { data: userData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("auth_id", result.user.id)
+        .single();
+      
+      if (userData) {
+        redirectBasedOnRole(userData.role);
+      } else {
+        navigate("/customer"); // default
+      }
       
     } catch (err: any) {
       setError(err.message)
@@ -84,7 +101,7 @@ export default function Login({ onLogin }: LoginProps) {
     }
   }
 
- const handleGoogleLogin = async () => {
+  const handleGoogleLogin = async () => {
     try {
       await loginWithGoogle()
     } catch (err: any) {
@@ -92,7 +109,7 @@ export default function Login({ onLogin }: LoginProps) {
     }
   }
 
-    const handleProfileSubmit = async (e: React.FormEvent) => {
+  const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
@@ -108,14 +125,13 @@ export default function Login({ onLogin }: LoginProps) {
         role: profile.role,
         location: profile.location,
       })
-      setSuccess(true)
-      setShowProfileForm(false)
       
-      // ADD THESE LINES:
       if (onLogin) {
         onLogin(user.id);
       }
-      navigate("/dashboard");
+      
+      // Redirect based on selected role
+      redirectBasedOnRole(profile.role);
       
     } catch (err: any) {
       setError(err.message)
@@ -174,13 +190,12 @@ export default function Login({ onLogin }: LoginProps) {
         <button
           type="submit"
           disabled={loading}
-          className="bg-green-600 text-white px-4 py-2 rounded"
+          className="bg-green-600 text-white px-4 py-2 rounded w-full"
         >
           {loading ? "Saving..." : "Save Profile"}
         </button>
 
         {error && <p className="text-red-600">{error}</p>}
-        {success && <p className="text-green-600">Profile saved!</p>}
       </form>
     )
   }
@@ -188,7 +203,7 @@ export default function Login({ onLogin }: LoginProps) {
   // Default: normal login page
   return (
     <div className="space-y-4 p-4 max-w-md mx-auto border rounded">
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-4">
         <h2 className="text-xl font-bold">Login</h2>
 
         <input
@@ -214,7 +229,7 @@ export default function Login({ onLogin }: LoginProps) {
         <button
           type="submit"
           disabled={loading}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
+          className="bg-blue-600 text-white px-4 py-2 rounded w-full"
         >
           {loading ? "Logging in..." : "Login"}
         </button>
@@ -228,7 +243,6 @@ export default function Login({ onLogin }: LoginProps) {
       </button>
 
       {error && <p className="text-red-600">{error}</p>}
-      {success && <p className="text-green-600">Login successful!</p>}
     </div>
   )
 }

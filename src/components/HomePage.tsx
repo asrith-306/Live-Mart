@@ -17,7 +17,7 @@ export default function HomePage({ isLoggedIn }: HomePageProps) {
           Your one-stop destination for fresh groceries and quality products
         </p>
         <button
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/customer")}
           style={{
             backgroundColor: "#4F46E5",
             color: "white",
@@ -94,7 +94,7 @@ export default function HomePage({ isLoggedIn }: HomePageProps) {
             Ready to continue shopping?
           </p>
           <button
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate("/customer")}
             style={{
               backgroundColor: "white",
               color: "#10B981",

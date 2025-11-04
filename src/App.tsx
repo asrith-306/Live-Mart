@@ -1,11 +1,10 @@
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { supabase } from "./utils/supabaseClient"
-import Signup from "./Signup.js";
-import Login from "./login.js";
+import { supabase } from "./utils/supabaseClient";
+import Signup from "./Signup";
+import Login from "./login";
 import SearchBar from "./components/SearchBar";
 import FeedbackForm from "./components/FeedbackForm";
-import Navigation from "./components/Navigation";
 import HomePage from "./components/HomePage";
 import RetailerDashboard from "./components/dashboards/RetailerDashboard";
 import CustomerDashboard from "./components/dashboards/CustomerDashboard";
@@ -22,16 +21,46 @@ type Product = {
   category?: string;
 };
 
-// Enhanced Navbar with both authentication and view switching
-function Navbar({ isLoggedIn, onLogout }: { isLoggedIn: boolean; onLogout: () => void }) {
+type UserRole = "customer" | "retailer" | "wholesaler" | null;
+
+// Protected Route Component
+function ProtectedRoute({ 
+  children, 
+  allowedRoles, 
+  userRole 
+}: { 
+  children: React.ReactNode; 
+  allowedRoles: UserRole[]; 
+  userRole: UserRole;
+}) {
+  if (!userRole) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (!allowedRoles.includes(userRole)) {
+    // Redirect to appropriate dashboard based on role
+    if (userRole === "customer") {
+      return <Navigate to="/customer" replace />;
+    } else if (userRole === "retailer" || userRole === "wholesaler") {
+      return <Navigate to="/retailer" replace />;
+    }
+  }
+  
+  return <>{children}</>;
+}
+
+// Enhanced Navbar
+function Navbar({ 
+  isLoggedIn, 
+  onLogout, 
+  userRole 
+}: { 
+  isLoggedIn: boolean; 
+  onLogout: () => void;
+  userRole: UserRole;
+}) {
   const { getCartCount } = useCart();
   const navigate = useNavigate();
-  const [view, setView] = useState<'retailer' | 'customer'>('customer');
-
-  const handleViewChange = (newView: 'retailer' | 'customer') => {
-    setView(newView);
-    navigate(newView === 'retailer' ? '/retailer' : '/customer');
-  };
 
   const handleLogoutClick = () => {
     onLogout();
@@ -39,77 +68,64 @@ function Navbar({ isLoggedIn, onLogout }: { isLoggedIn: boolean; onLogout: () =>
   };
 
   return (
-    <nav className="bg-white shadow-md p-4 mb-4">
+    <nav className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg p-4 mb-0">
       <div className="container mx-auto flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold text-blue-500">
-          Live MART
-        </Link>
+        <button 
+          onClick={() => navigate("/")}
+          className="text-2xl font-bold text-white hover:scale-105 transition-transform cursor-pointer flex items-center gap-2"
+        >
+          🛒 Live MART
+        </button>
 
-        <div className="flex gap-4 items-center">
-          {/* Show view switcher only if logged in */}
-          {isLoggedIn && (
-            <>
+        {/* Only show these when logged in */}
+        {isLoggedIn && (
+          <div className="flex gap-4 items-center">
+            {/* Show role-specific buttons */}
+            {userRole === "customer" && (
+              <>
+                <button
+                  onClick={() => navigate('/customer')}
+                  className="px-4 py-2 rounded-lg bg-white text-blue-600 shadow-md font-semibold"
+                >
+                  My Dashboard
+                </button>
+                <button
+                  onClick={() => navigate('/orders')}
+                  className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold"
+                >
+                  My Orders
+                </button>
+                <button
+                  onClick={() => navigate('/cart')}
+                  className="relative px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-300 transition-all font-semibold"
+                >
+                  🛒 Cart
+                  {getCartCount() > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
+                      {getCartCount()}
+                    </span>
+                  )}
+                </button>
+              </>
+            )}
+
+            {(userRole === "retailer" || userRole === "wholesaler") && (
               <button
-                onClick={() => handleViewChange('customer')}
-                className={`px-4 py-2 rounded ${
-                  view === 'customer' ? 'bg-blue-500 text-white' : 'bg-gray-200'
-                }`}
+                onClick={() => navigate('/retailer')}
+                className="px-4 py-2 rounded-lg bg-white text-purple-600 shadow-md font-semibold"
               >
-                Customer View
+                Retailer Dashboard
               </button>
-              <button
-                onClick={() => handleViewChange('retailer')}
-                className={`px-4 py-2 rounded ${
-                  view === 'retailer' ? 'bg-blue-500 text-white' : 'bg-gray-200'
-                }`}
-              >
-                Retailer View
-              </button>
-            </>
-          )}
+            )}
 
-          {/* Customer-specific navigation */}
-          {isLoggedIn && view === 'customer' && (
-            <>
-              <Link
-                to="/orders"
-                className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
-              >
-                My Orders
-              </Link>
-              <Link
-                to="/cart"
-                className="relative px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600"
-              >
-                🛒 Cart
-                {getCartCount() > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                    {getCartCount()}
-                  </span>
-                )}
-              </Link>
-            </>
-          )}
-
-          {/* Auth buttons */}
-          {isLoggedIn ? (
             <button
               onClick={handleLogoutClick}
-              className="px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600"
+              className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all font-semibold"
             >
               Logout
             </button>
-          ) : (
-            <>
-              <Link to="/login" className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">
-                Login
-              </Link>
-              <Link to="/signup" className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600">
-                Sign Up
-              </Link>
-            </>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </nav>
   );
@@ -120,6 +136,7 @@ function App() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole>(null);
 
   // 🧠 Get the logged-in user from Supabase Auth
   useEffect(() => {
@@ -127,21 +144,51 @@ function App() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      
       if (user) {
         setUserId(user.id);
         setIsLoggedIn(true);
+        
+        // Fetch user role from users table
+        const { data: userData } = await supabase
+          .from("users")
+          .select("role")
+          .eq("auth_id", user.id)
+          .single();
+        
+        if (userData) {
+          setUserRole(userData.role as UserRole);
+        }
       } else {
         setUserId(null);
         setIsLoggedIn(false);
+        setUserRole(null);
       }
     }
 
     getUser();
 
     // Also listen for login/logout events
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user?.id || null);
-      setIsLoggedIn(!!session?.user);
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        setUserId(session.user.id);
+        setIsLoggedIn(true);
+        
+        // Fetch user role
+        const { data: userData } = await supabase
+          .from("users")
+          .select("role")
+          .eq("auth_id", session.user.id)
+          .single();
+        
+        if (userData) {
+          setUserRole(userData.role as UserRole);
+        }
+      } else {
+        setUserId(null);
+        setIsLoggedIn(false);
+        setUserRole(null);
+      }
     });
 
     return () => {
@@ -164,21 +211,33 @@ function App() {
     fetchProducts();
   }, []);
 
-  const handleLogin = (id: string) => {
+  const handleLogin = async (id: string) => {
     setUserId(id);
     setIsLoggedIn(true);
+    
+    // Fetch user role after login
+    const { data: userData } = await supabase
+      .from("users")
+      .select("role")
+      .eq("auth_id", id)
+      .single();
+    
+    if (userData) {
+      setUserRole(userData.role as UserRole);
+    }
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUserId(null);
     setIsLoggedIn(false);
+    setUserRole(null);
   };
 
   return (
     <Router>
       <div className="min-h-screen bg-gray-100">
-        <Navbar isLoggedIn={isLoggedIn} onLogout={handleLogout} />
+        <Navbar isLoggedIn={isLoggedIn} onLogout={handleLogout} userRole={userRole} />
         
         <Routes>
           {/* 🏠 Home Page */}
@@ -188,19 +247,61 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           
           {/* 🔐 Login Page */}
-          <Route path="/login" element={<Login onLogin={handleLogin} />} />
+          <Route path="/login" element={<Login onLogin={handleLogin} userRole={userRole} />} />
           
-          {/* 🛒 Customer Dashboard */}
-          <Route path="/customer" element={<CustomerDashboard />} />
+          {/* 🛒 Customer Dashboard - Only for customers */}
+          <Route 
+            path="/customer" 
+            element={
+              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
+                <CustomerDashboard />
+              </ProtectedRoute>
+            } 
+          />
           
-          {/* 🏪 Retailer Dashboard */}
-          <Route path="/retailer" element={<RetailerDashboard />} />
+          {/* 🏪 Retailer Dashboard - Only for retailers/wholesalers */}
+          <Route 
+            path="/retailer" 
+            element={
+              <ProtectedRoute allowedRoles={["retailer", "wholesaler"]} userRole={userRole}>
+                <RetailerDashboard />
+              </ProtectedRoute>
+            } 
+          />
           
-          {/* 🛒 Cart & Orders */}
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/order-success/:orderId" element={<OrderSuccess />} />
-          <Route path="/orders" element={<Orders />} />
+          {/* 🛒 Cart & Orders - Only for customers */}
+          <Route 
+            path="/cart" 
+            element={
+              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
+                <Cart />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/checkout" 
+            element={
+              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
+                <Checkout />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/order-success/:orderId" 
+            element={
+              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
+                <OrderSuccess />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/orders" 
+            element={
+              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
+                <Orders />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* 🛒 Original Dashboard with Feedback */}
           <Route
