@@ -12,18 +12,30 @@ export default function FeedbackForm({ productId, userId }: FeedbackFormProps) {
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [userName, setUserName] = useState<string>("");
 
-  // 🧠 Fetch logged-in user's name from 'users' table
+  // 🧠 Fetch logged-in user's email from Supabase Auth
   useEffect(() => {
     async function fetchUserName() {
-      const { data, error } = await supabase
-        .from("users")
-        .select("username")
-        .eq("id", userId)
-        .single();
+      try {
+        // Get user data from Supabase Auth (not from custom users table)
+        const { data: { user }, error } = await supabase.auth.getUser();
 
-      if (error) console.error("Error fetching username:", error.message);
-      else if (data?.username) setUserName(data.username);
-      else setUserName("Anonymous"); // fallback
+        if (error) {
+          console.error("Error fetching user:", error.message);
+          setUserName("Anonymous");
+        } else if (user?.email) {
+          // Use email or extract name from email
+          const emailName = user.email.split('@')[0];
+          setUserName(emailName || user.email);
+        } else if (user?.user_metadata?.name) {
+          // If user has a name in metadata
+          setUserName(user.user_metadata.name);
+        } else {
+          setUserName("Anonymous");
+        }
+      } catch (err) {
+        console.error("Error:", err);
+        setUserName("Anonymous");
+      }
     }
 
     fetchUserName();
@@ -60,7 +72,7 @@ export default function FeedbackForm({ productId, userId }: FeedbackFormProps) {
         customer_id: userId,
         rating,
         comment,
-        user_name: userName || "Anonymous", // ensure always has a value
+        user_name: userName || "Anonymous",
       },
     ]);
 
