@@ -50,11 +50,14 @@ export default function Login({ onLogin }: LoginProps) {
     checkSession()
   }, [])
 
+  // ✅ FIXED: Now routes wholesalers to /wholesaler
   const redirectBasedOnRole = (role: string) => {
     if (role === "customer") {
       navigate("/customer");
-    } else if (role === "retailer" || role === "wholesaler") {
+    } else if (role === "retailer") {
       navigate("/retailer");
+    } else if (role === "wholesaler") {
+      navigate("/wholesaler");
     } else {
       navigate("/customer"); // default
     }

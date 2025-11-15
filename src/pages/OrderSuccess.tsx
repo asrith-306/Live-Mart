@@ -79,7 +79,7 @@ function OrderSuccess() {
           View My Orders
         </button>
         <button
-          onClick={() => navigate('/products')}
+          onClick={() => navigate('/customer')}
           className="w-full bg-gray-200 py-2 rounded hover:bg-gray-300"
         >
           Continue Shopping

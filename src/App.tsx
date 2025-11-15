@@ -8,6 +8,7 @@ import FeedbackForm from "./components/FeedbackForm";
 import HomePage from "./components/HomePage";
 import RetailerDashboard from "./components/dashboards/RetailerDashboard";
 import CustomerDashboard from "./components/dashboards/CustomerDashboard";
+import WholesalerDashboard from "./components/dashboards/WholesalerDashboard";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
@@ -42,8 +43,10 @@ function ProtectedRoute({
     // Redirect to appropriate dashboard based on role
     if (userRole === "customer") {
       return <Navigate to="/customer" replace />;
-    } else if (userRole === "retailer" || userRole === "wholesaler") {
+    } else if (userRole === "retailer") {
       return <Navigate to="/retailer" replace />;
+    } else if (userRole === "wholesaler") {
+      return <Navigate to="/wholesaler" replace />;
     }
   }
   
@@ -110,12 +113,21 @@ function Navbar({
               </>
             )}
 
-            {(userRole === "retailer" || userRole === "wholesaler") && (
+            {userRole === "retailer" && (
               <button
                 onClick={() => navigate('/retailer')}
                 className="px-4 py-2 rounded-lg bg-white text-purple-600 shadow-md font-semibold"
               >
                 Retailer Dashboard
+              </button>
+            )}
+
+            {userRole === "wholesaler" && (
+              <button
+                onClick={() => navigate('/wholesaler')}
+                className="px-4 py-2 rounded-lg bg-white text-green-600 shadow-md font-semibold"
+              >
+                Wholesaler Dashboard
               </button>
             )}
 
@@ -260,12 +272,22 @@ function App() {
             } 
           />
           
-          {/* 🏪 Retailer Dashboard - Only for retailers/wholesalers */}
+          {/* 🏪 Retailer Dashboard - ONLY for retailers */}
           <Route 
             path="/retailer" 
             element={
-              <ProtectedRoute allowedRoles={["retailer", "wholesaler"]} userRole={userRole}>
+              <ProtectedRoute allowedRoles={["retailer"]} userRole={userRole}>
                 <RetailerDashboard />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* 🏭 Wholesaler Dashboard - ONLY for wholesalers */}
+          <Route 
+            path="/wholesaler" 
+            element={
+              <ProtectedRoute allowedRoles={["wholesaler"]} userRole={userRole}>
+                <WholesalerDashboard />
               </ProtectedRoute>
             } 
           />
