@@ -1,12 +1,26 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import {
+  ShoppingCart,
+  Menu,
+  X,
+  Home,
+  Package,
+  LogOut
+} from "lucide-react";
 
 interface NavigationProps {
   isLoggedIn: boolean;
   onLogout: () => void;
 }
 
-export default function Navigation({ isLoggedIn, onLogout }: NavigationProps) {
+const Navigation = ({
+  isLoggedIn,
+  onLogout
+}: NavigationProps) => {
   const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     onLogout();
@@ -14,55 +28,139 @@ export default function Navigation({ isLoggedIn, onLogout }: NavigationProps) {
   };
 
   return (
-    <nav style={{
-      backgroundColor: "#4F46E5",
-      color: "white",
-      padding: "15px 30px",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center"
-    }}>
-      <Link to="/" style={{ color: "white", fontSize: "24px", fontWeight: "bold", textDecoration: "none" }}>
-        🛒 Live Mart
-      </Link>
-      
-      <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
-        <Link to="/" style={{ color: "white", textDecoration: "none" }}>Home</Link>
-        <Link to="/dashboard" style={{ color: "white", textDecoration: "none" }}>Products</Link>
-        
-        {isLoggedIn ? (
-          <button
-            onClick={handleLogout}
-            style={{
-              backgroundColor: "#EF4444",
-              color: "white",
-              padding: "8px 20px",
-              border: "none",
-              borderRadius: "5px",
-              cursor: "pointer"
-            }}
+    <nav className="sticky top-0 z-50 bg-primary backdrop-blur-lg border-b border-primary-glow shadow-lg">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16 md:h-20">
+          {/* Logo */}
+          <Link
+            to="/"
+            className="flex items-center gap-2 group"
           >
-            Logout
-          </button>
-        ) : (
-          <>
-            <Link to="/login" style={{ color: "white", textDecoration: "none" }}>Login</Link>
-            <Link
-              to="/signup"
-              style={{
-                backgroundColor: "#FCD34D",
-                color: "#1F2937",
-                padding: "8px 20px",
-                borderRadius: "5px",
-                textDecoration: "none",
-                fontWeight: "bold"
-              }}
+            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/20 transition-all duration-300">
+              <ShoppingCart className="h-6 w-6 text-white" />
+            </div>
+            <span className="text-2xl font-bold text-white">
+              Live Mart
+            </span>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-6">
+            <Link 
+              to="/" 
+              className="text-white hover:text-white/80 transition-colors font-medium"
             >
-              Sign Up
+              Home
             </Link>
-          </>
-        )}
+            <Link 
+              to="/dashboard" 
+              className="text-white hover:text-white/80 transition-colors font-medium"
+            >
+              Products
+            </Link>
+
+            {isLoggedIn ? (
+              <Button
+                onClick={handleLogout}
+                variant="destructive"
+                className="bg-red-500 hover:bg-red-600"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            ) : (
+              <>
+                <Link 
+                  to="/login" 
+                  className="text-white hover:text-white/80 transition-colors font-medium"
+                >
+                  Login
+                </Link>
+                <Link to="/signup">
+                  <Button
+                    className="bg-yellow-400 text-gray-900 hover:bg-yellow-500 font-bold"
+                  >
+                    Sign Up
+                  </Button>
+                </Link>
+              </>
+            )}
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            className="md:hidden p-2 hover:bg-white/10 rounded-lg transition-colors text-white"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden border-t border-white/10 bg-primary/95 backdrop-blur-lg">
+          <div className="container mx-auto px-4 py-4 space-y-2">
+            <Link
+              to="/"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors text-left text-white"
+            >
+              <Home className="h-5 w-5" />
+              <span className="font-medium">Home</span>
+            </Link>
+
+            <Link
+              to="/dashboard"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors text-left text-white"
+            >
+              <Package className="h-5 w-5" />
+              <span className="font-medium">Products</span>
+            </Link>
+
+            {isLoggedIn ? (
+              <div className="pt-2 border-t border-white/10">
+                <Button
+                  onClick={() => {
+                    handleLogout();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  variant="destructive"
+                  className="w-full justify-start gap-3 bg-red-500 hover:bg-red-600"
+                >
+                  <LogOut className="h-5 w-5" />
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <div className="pt-2 space-y-2 border-t border-white/10">
+                <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button
+                    variant="outline"
+                    className="w-full border-2 border-white text-white hover:bg-white/10"
+                  >
+                    Login
+                  </Button>
+                </Link>
+                <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button
+                    className="w-full bg-yellow-400 text-gray-900 hover:bg-yellow-500 font-bold"
+                  >
+                    Sign Up
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </nav>
   );
-}
+};
+
+export default Navigation;

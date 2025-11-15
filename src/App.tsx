@@ -13,6 +13,7 @@ import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
 import Orders from "./pages/Orders";
 import { useCart } from "./context/CartContext";
+import './index.css'
 
 type Product = {
   id: string;
