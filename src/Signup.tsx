@@ -38,27 +38,38 @@ function Signup() {
           role,
         });
 
-        if (userError) throw userError;
+        if (userError) {
+          console.error("User table error:", userError);
+          throw userError;
+        }
 
         // 3. If delivery partner, create delivery partner profile
         if (role === "delivery_partner") {
+          console.log("Creating delivery partner with auth_id:", authData.user.id);
+          
           const { error: partnerError } = await supabase
             .from("delivery_partners")
             .insert({
-              id: authData.user.id,
-              name,
-              phone,
+              auth_id: authData.user.id,  // ✅ Fixed: use auth_id instead of id
+              name: name,
+              phone: phone,
               vehicle_type: vehicleType,
-              is_online: false,
+              is_available: true,  // ✅ Fixed: use is_available instead of is_online
             });
 
-          if (partnerError) throw partnerError;
+          if (partnerError) {
+            console.error("Delivery partner error:", partnerError);
+            throw partnerError;
+          }
+          
+          console.log("Delivery partner created successfully!");
         }
 
-        alert("✅ Signup successful! Please check your email to verify your account.");
+        alert("✅ Signup successful! You can now login.");
         navigate("/login");
       }
     } catch (err: any) {
+      console.error("Signup error:", err);
       setError(err.message || "Signup failed");
     } finally {
       setLoading(false);

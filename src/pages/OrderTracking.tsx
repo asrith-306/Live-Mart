@@ -1,318 +1,323 @@
-import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
-import { Package, MapPin, Clock, CheckCircle, Truck, Phone } from 'lucide-react';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import React, { useState, useEffect } from 'react';
+import { MapPin, Phone, Package, Clock, CheckCircle, Truck, User, ArrowLeft } from 'lucide-react';
 
-// Fix for default marker icons in React-Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
-// Custom delivery partner icon
-const deliveryIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png',
-  iconSize: [40, 40],
-  iconAnchor: [20, 40],
-  popupAnchor: [0, -40]
-});
-
-// Import Supabase client
-import { supabase } from '../utils/supabaseClient';
-
-type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered';
-
-type OrderData = {
+interface OrderDetails {
   id: string;
-  delivery_status: OrderStatus;
-  delivery_partner_id?: string;
+  status: string;
+  total_amount: number;
+  delivery_address: string;
+  estimated_delivery: string;
+  created_at: string;
   delivery_partner?: {
     name: string;
     phone: string;
-    vehicle_type: string;
+    vehicle: string;
   };
-  delivery_lat: number;
-  delivery_lng: number;
-  estimated_delivery: string;
-  delivery_address: string;
+}
+
+// Sample data for demonstration
+const sampleOrder: OrderDetails = {
+  id: '08beaf87-c36e-4c4f-9e80-f5f8bffade4d',
+  status: 'out_for_delivery',
+  total_amount: 1299,
+  delivery_address: 'Hyderabad, Telangana, India',
+  estimated_delivery: '2025-11-16T19:56:00',
+  created_at: '2025-11-16T10:00:00',
+  delivery_partner: {
+    name: 'Ananya',
+    phone: '+91 98765 43210',
+    vehicle: 'Scooter'
+  }
 };
 
-type LocationUpdate = {
-  latitude: number;
-  longitude: number;
-  timestamp: string;
-};
+const OrderTracking: React.FC = () => {
+  const [order, setOrder] = useState<OrderDetails>(sampleOrder);
+  const [liveLocation, setLiveLocation] = useState<string>('');
+  const [currentTime, setCurrentTime] = useState(new Date());
 
-export default function OrderTracking() {
-  const { orderId } = useParams<{ orderId: string }>();
-  const [order, setOrder] = useState<OrderData | null>(null);
-  const [deliveryLocation, setDeliveryLocation] = useState<[number, number] | null>(null);
-  const [locationHistory, setLocationHistory] = useState<[number, number][]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch order details
   useEffect(() => {
-    async function fetchOrder() {
-      if (!orderId) return;
-      
-      // Replace with actual supabase import
-      const { data } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          delivery_partner:delivery_partners(name, phone, vehicle_type)
-        `)
-        .eq('id', orderId)
-        .single();
-
-      if (data) {
-        setOrder(data as OrderData);
-        if (data.delivery_lat && data.delivery_lng) {
-          setDeliveryLocation([data.delivery_lat, data.delivery_lng]);
-        }
-        setLoading(false);
-      }
+    // Simulate live location updates
+    if (order.status === 'out_for_delivery') {
+      setLiveLocation('Your delivery is on the way! Driver is 2.5 km away.');
     }
 
-    fetchOrder();
-  }, [orderId]);
+    // Update current time every second
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
 
-  // Subscribe to real-time location updates
-  useEffect(() => {
-    if (!order?.delivery_partner_id || !orderId) return;
+    return () => clearInterval(timer);
+  }, [order.status]);
 
-    const channel = supabase
-      .channel('delivery-tracking')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'delivery_tracking',
-          filter: `order_id=eq.${orderId}`
-        },
-        (payload: any) => {
-          const newLocation: LocationUpdate = payload.new;
-          const coords: [number, number] = [newLocation.latitude, newLocation.longitude];
-          setDeliveryLocation(coords);
-          setLocationHistory(prev => [...prev, coords]);
-        }
-      )
-      .subscribe();
+  const getStatusSteps = () => {
+    const allSteps = [
+      { key: 'confirmed', label: 'Order Confirmed', icon: CheckCircle, time: '10:00 AM' },
+      { key: 'preparing', label: 'Preparing', icon: Package, time: '10:15 AM' },
+      { key: 'out_for_delivery', label: 'Out for Delivery', icon: Truck, time: '11:30 AM' },
+      { key: 'delivered', label: 'Delivered', icon: CheckCircle, time: 'Expected: 7:56 PM' }
+    ];
 
-    return () => {
-      channel.unsubscribe();
-    };
-  }, [orderId, order?.delivery_partner_id]);
+    const statusOrder = ['confirmed', 'preparing', 'out_for_delivery', 'delivered'];
+    const currentIndex = statusOrder.indexOf(order.status);
 
-  // Simulate live tracking (for demo purposes)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (deliveryLocation && order?.delivery_status === 'out_for_delivery') {
-        const [lat, lng] = deliveryLocation;
-        // Simulate movement (small random changes)
-        const newLat = lat + (Math.random() - 0.5) * 0.001;
-        const newLng = lng + (Math.random() - 0.5) * 0.001;
-        setDeliveryLocation([newLat, newLng]);
-        setLocationHistory(prev => [...prev.slice(-20), [newLat, newLng]]);
-      }
-    }, 5000);
+    return allSteps.map((step, index) => ({
+      ...step,
+      isCompleted: index <= currentIndex,
+      isActive: index === currentIndex
+    }));
+  };
 
-    return () => clearInterval(interval);
-  }, [deliveryLocation, order?.delivery_status]);
+  const handleCallDeliveryPartner = () => {
+    if (order.delivery_partner?.phone) {
+      alert(`Calling ${order.delivery_partner.name} at ${order.delivery_partner.phone}`);
+      // In production: window.location.href = `tel:${order.delivery_partner.phone}`;
+    }
+  };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  const getTimeRemaining = () => {
+    const estimatedTime = new Date(order.estimated_delivery);
+    const diff = estimatedTime.getTime() - currentTime.getTime();
+    
+    if (diff < 0) return 'Delivery time passed';
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    return `${hours}h ${minutes}m remaining`;
+  };
 
-  if (!order) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <p className="text-gray-600">Order not found</p>
-        </div>
-      </div>
-    );
-  }
-
-  const statusSteps: { status: OrderStatus; label: string; icon: any }[] = [
-    { status: 'confirmed', label: 'Order Confirmed', icon: CheckCircle },
-    { status: 'preparing', label: 'Preparing', icon: Package },
-    { status: 'out_for_delivery', label: 'Out for Delivery', icon: Truck },
-    { status: 'delivered', label: 'Delivered', icon: CheckCircle }
-  ];
-
-  const currentStepIndex = statusSteps.findIndex(s => s.status === order.delivery_status);
-
-  // Default location (Hyderabad) if no delivery location
-  const mapCenter: [number, number] = deliveryLocation || [17.385044, 78.486671];
-  const destinationLocation: [number, number] = [order.delivery_lat, order.delivery_lng];
+  const statusSteps = getStatusSteps();
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-8 px-4">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-gray-800">Track Your Order</h1>
-            <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">
-              Order #{orderId?.slice(0, 8)}
-            </span>
-          </div>
-
-          {/* Status Timeline */}
-          <div className="flex items-center justify-between relative mt-8 mb-4">
-            <div className="absolute top-5 left-0 right-0 h-1 bg-gray-200">
-              <div 
-                className="h-full bg-blue-600 transition-all duration-500"
-                style={{ width: `${(currentStepIndex / (statusSteps.length - 1)) * 100}%` }}
-              ></div>
+        <div className="mb-8">
+          <button
+            className="text-purple-600 hover:text-purple-800 font-semibold mb-4 flex items-center gap-2 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Back to Orders
+          </button>
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">Track Your Order</h1>
+            <p className="text-gray-600 text-lg">Order #{order.id.substring(0, 8)}</p>
+            <div className="mt-4 inline-block px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-400 text-white rounded-full font-semibold">
+              {getTimeRemaining()}
             </div>
-            
-            {statusSteps.map((step, index) => {
-              const Icon = step.icon;
-              const isActive = index <= currentStepIndex;
-              const isCurrent = index === currentStepIndex;
-              
-              return (
-                <div key={step.status} className="relative flex flex-col items-center z-10">
-                  <div className={`
-                    w-10 h-10 rounded-full flex items-center justify-center
-                    ${isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-400'}
-                    ${isCurrent ? 'ring-4 ring-blue-200 animate-pulse' : ''}
-                    transition-all duration-300
-                  `}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <p className={`
-                    mt-2 text-xs font-medium text-center
-                    ${isActive ? 'text-blue-600' : 'text-gray-400'}
-                  `}>
-                    {step.label}
-                  </p>
-                </div>
-              );
-            })}
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* Left Column - Order Info */}
-          <div className="space-y-6">
-            {/* Delivery Info */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <MapPin className="text-blue-600" />
-                Delivery Address
-              </h2>
-              <p className="text-gray-600">{order.delivery_address}</p>
+        {/* Status Timeline */}
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-8">Order Progress</h2>
+          
+          <div className="relative">
+            {/* Progress Line */}
+            <div className="absolute left-8 top-8 bottom-8 w-1 bg-gray-200">
+              <div 
+                className="bg-gradient-to-b from-purple-600 to-pink-600 transition-all duration-1000 ease-out"
+                style={{ 
+                  height: `${(statusSteps.findIndex(s => s.isActive) / (statusSteps.length - 1)) * 100}%` 
+                }}
+              />
             </div>
 
-            {/* Estimated Time */}
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-md p-6 text-white">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="w-5 h-5" />
-                <h3 className="font-semibold">Estimated Delivery</h3>
-              </div>
-              <p className="text-3xl font-bold">{order.estimated_delivery}</p>
-            </div>
-
-            {/* Delivery Partner Info */}
-            {order.delivery_partner && (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <Truck className="text-blue-600" />
-                  Delivery Partner
-                </h2>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-500">Name</p>
-                    <p className="font-semibold text-gray-800">{order.delivery_partner.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Vehicle</p>
-                    <p className="font-semibold text-gray-800">{order.delivery_partner.vehicle_type}</p>
-                  </div>
-                  <button className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
-                    <Phone className="w-4 h-4" />
-                    Call Delivery Partner
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Right Column - Map */}
-          <div className="md:col-span-2">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-lg font-bold text-gray-800 mb-4">Live Tracking</h2>
-              <div className="h-96 rounded-lg overflow-hidden border-2 border-gray-200">
-                <MapContainer 
-                  center={mapCenter} 
-                  zoom={14} 
-                  style={{ height: '100%', width: '100%' }}
-                >
-                  <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  />
-                  
-                  {/* Delivery Partner Location */}
-                  {deliveryLocation && (
-                    <Marker position={deliveryLocation} icon={deliveryIcon}>
-                      <Popup>
-                        <div className="text-center">
-                          <p className="font-bold">Delivery Partner</p>
-                          <p className="text-sm">{order.delivery_partner?.name}</p>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  )}
-
-                  {/* Destination Location */}
-                  <Marker position={destinationLocation}>
-                    <Popup>
-                      <div className="text-center">
-                        <p className="font-bold">Delivery Location</p>
-                        <p className="text-sm">{order.delivery_address}</p>
+            {/* Status Steps */}
+            <div className="space-y-8 relative">
+              {statusSteps.map((step, index) => {
+                const IconComponent = step.icon;
+                return (
+                  <div key={step.key} className="flex items-start gap-6">
+                    <div className={`relative z-10 flex items-center justify-center w-16 h-16 rounded-full transition-all duration-500 ${
+                      step.isCompleted 
+                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg' 
+                        : 'bg-gray-200 text-gray-400'
+                    } ${step.isActive ? 'ring-4 ring-purple-200 scale-110 animate-pulse' : ''}`}>
+                      <IconComponent className="w-8 h-8" />
+                    </div>
+                    <div className="flex-1 pt-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className={`text-xl font-semibold ${
+                          step.isCompleted ? 'text-gray-800' : 'text-gray-400'
+                        }`}>
+                          {step.label}
+                        </h3>
+                        <span className={`text-sm font-medium ${
+                          step.isCompleted ? 'text-gray-600' : 'text-gray-400'
+                        }`}>
+                          {step.time}
+                        </span>
                       </div>
-                    </Popup>
-                  </Marker>
-
-                  {/* Path traveled */}
-                  {locationHistory.length > 1 && (
-                    <Polyline 
-                      positions={locationHistory} 
-                      color="#3B82F6" 
-                      weight={3}
-                      opacity={0.6}
-                    />
-                  )}
-                </MapContainer>
-              </div>
-              
-              {order.delivery_status === 'out_for_delivery' && (
-                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-75"></div>
-                    <div className="relative w-3 h-3 bg-blue-600 rounded-full"></div>
+                      {step.isActive && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <div className="w-2 h-2 bg-purple-600 rounded-full animate-ping"></div>
+                          <p className="text-purple-600 font-medium">
+                            In Progress
+                          </p>
+                        </div>
+                      )}
+                      {step.isCompleted && !step.isActive && (
+                        <p className="text-green-600 font-medium mt-1">
+                          ✓ Completed
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-blue-800 font-medium">Your delivery is on the way!</p>
-                </div>
-              )}
+                );
+              })}
             </div>
           </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Delivery Address */}
+          <div className="bg-white rounded-2xl shadow-xl p-6 transform hover:scale-105 transition-transform">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-purple-100 rounded-full">
+                <MapPin className="w-6 h-6 text-purple-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">Delivery Address</h3>
+            </div>
+            <p className="text-gray-700 text-lg leading-relaxed">{order.delivery_address}</p>
+          </div>
+
+          {/* Estimated Delivery */}
+          <div className="bg-white rounded-2xl shadow-xl p-6 transform hover:scale-105 transition-transform">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-orange-100 rounded-full">
+                <Clock className="w-6 h-6 text-orange-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">Estimated Delivery</h3>
+            </div>
+            <p className="text-3xl font-bold text-purple-600 mb-2">
+              {new Date(order.estimated_delivery).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </p>
+            <p className="text-gray-600">
+              {new Date(order.estimated_delivery).toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </p>
+          </div>
+        </div>
+
+        {/* Delivery Partner Info */}
+        {order.delivery_partner && (
+          <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl shadow-xl p-6 mt-6 text-white">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-white/20 rounded-full">
+                <Truck className="w-8 h-8" />
+              </div>
+              <h3 className="text-2xl font-bold">Your Delivery Partner</h3>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                    <User className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold mb-1">
+                      {order.delivery_partner.name}
+                    </p>
+                    <p className="text-white/80 flex items-center gap-2">
+                      <Package className="w-4 h-4" />
+                      Vehicle: <span className="font-semibold">{order.delivery_partner.vehicle}</span>
+                    </p>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={handleCallDeliveryPartner}
+                  className="flex items-center gap-3 px-8 py-4 bg-white text-purple-600 font-bold rounded-xl hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg"
+                >
+                  <Phone className="w-6 h-6" />
+                  Call Now
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Live Tracking */}
+        {order.status === 'out_for_delivery' && (
+          <div className="bg-white rounded-2xl shadow-xl p-6 mt-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-green-100 rounded-full animate-pulse">
+                <Truck className="w-6 h-6 text-green-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-800">Live Tracking</h3>
+            </div>
+            
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 mb-4">
+              <p className="text-lg font-semibold text-green-700 flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-ping"></div>
+                {liveLocation}
+              </p>
+            </div>
+
+            <div className="h-64 bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl flex items-center justify-center border-4 border-dashed border-purple-200">
+              <div className="text-center p-8">
+                <MapPin className="w-20 h-20 mx-auto mb-4 text-purple-600 animate-bounce" />
+                <p className="text-xl font-semibold text-gray-700 mb-2">Real-time GPS Tracking</p>
+                <p className="text-gray-600">Map integration displays live delivery location</p>
+                <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span>Live updates every 30 seconds</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Order Summary */}
+        <div className="bg-white rounded-2xl shadow-xl p-6 mt-6">
+          <h3 className="text-xl font-bold text-gray-800 mb-6">Order Summary</h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center pb-4 border-b border-gray-200">
+              <span className="text-gray-600 text-lg">Total Amount</span>
+              <span className="text-3xl font-bold text-purple-600">₹{order.total_amount}</span>
+            </div>
+            <div className="flex justify-between items-center pb-4 border-b border-gray-200">
+              <span className="text-gray-600 text-lg">Order Date</span>
+              <span className="text-gray-800 font-semibold">
+                {new Date(order.created_at).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600 text-lg">Payment Status</span>
+              <span className="px-4 py-2 bg-green-100 text-green-700 font-semibold rounded-full">
+                ✓ Paid
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Help Section */}
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 mt-6 border-2 border-gray-200">
+          <h3 className="text-lg font-bold text-gray-800 mb-3">Need Help?</h3>
+          <p className="text-gray-600 mb-4">
+            Contact our customer support for any queries or concerns about your order.
+          </p>
+          <button className="px-6 py-3 bg-gray-800 text-white font-semibold rounded-lg hover:bg-gray-700 transition-all">
+            Contact Support
+          </button>
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default OrderTracking;

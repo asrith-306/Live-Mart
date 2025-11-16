@@ -15,7 +15,7 @@ import Orders from "./pages/Orders";
 import { useCart } from "./context/CartContext";
 import OrderTracking from "./pages/OrderTracking";
 import DeliveryPartnerDashboard from './pages/DeliveryPartnerDashboard';
-import OrderManagement from './pages/order-management';
+import OrderManagement from "./components/order-management";
 
 type Product = {
   id: string;
@@ -297,10 +297,10 @@ function App() {
   path="/order-management" 
   element={
     <ProtectedRoute allowedRoles={["retailer", "wholesaler"]} userRole={userRole}>
-      <OrderManagement/>
+      <OrderManagement />
     </ProtectedRoute>
   } 
-/>   
+/>  
           {/* 🏪 Retailer Dashboard - Only for retailers/wholesalers */}
           <Route 
             path="/retailer" 
