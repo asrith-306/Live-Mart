@@ -10,7 +10,7 @@ function Cart() {
       <div className="container mx-auto px-4 py-8 text-center">
         <h1 className="text-3xl font-bold mb-4">Your Cart is Empty</h1>
         <button
-          onClick={() => navigate('/products')}
+          onClick={() => navigate('/customer')}
           className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600"
         >
           Continue Shopping
