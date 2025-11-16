@@ -17,6 +17,17 @@ export interface Product {
   updated_at?: string;
 }
 
+export interface ProductReview {
+  id?: string;
+  order_id: string;
+  product_id: string;
+  customer_id: string;
+  rating: number;
+  review_text?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // Fetch all active (non-deleted) products
 export const fetchProducts = async (): Promise<Product[]> => {
   const { data, error } = await supabase
@@ -177,4 +188,78 @@ export const permanentlyDeleteProduct = async (id: string): Promise<void> => {
   }
   
   console.log('Product permanently deleted');
+};
+
+// ============= REVIEW FUNCTIONS =============
+
+// Add a review for a product
+export const addReview = async (review: ProductReview): Promise<ProductReview> => {
+  console.log('Adding review:', review);
+  
+  const { data, error } = await supabase
+    .from('product_reviews')
+    .insert([review])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding review:', error);
+    throw error;
+  }
+  
+  console.log('Review added successfully:', data);
+  return data;
+};
+
+// Update an existing review
+export const updateReview = async (reviewId: string, updates: Partial<ProductReview>): Promise<ProductReview> => {
+  console.log('Updating review ID:', reviewId);
+  
+  const { data, error } = await supabase
+    .from('product_reviews')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', reviewId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating review:', error);
+    throw error;
+  }
+  
+  console.log('Review updated successfully:', data);
+  return data;
+};
+
+// Check if user has already reviewed a product in an order
+export const getExistingReview = async (orderId: string, productId: string): Promise<ProductReview | null> => {
+  const { data, error } = await supabase
+    .from('product_reviews')
+    .select('*')
+    .eq('order_id', orderId)
+    .eq('product_id', productId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+    console.error('Error fetching existing review:', error);
+    throw error;
+  }
+  
+  return data || null;
+};
+
+// Fetch all reviews for a product
+export const fetchProductReviews = async (productId: string): Promise<ProductReview[]> => {
+  const { data, error } = await supabase
+    .from('product_reviews')
+    .select('*')
+    .eq('product_id', productId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching product reviews:', error);
+    throw error;
+  }
+  
+  return data || [];
 };

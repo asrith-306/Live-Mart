@@ -3,7 +3,7 @@ import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 
-interface FormData {
+interface CheckoutFormData {
   phone: string;
   address: string;
   paymentMethod: 'online' | 'offline';
@@ -20,7 +20,7 @@ function Checkout() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<CheckoutFormData>({
     phone: '',
     address: '',
     paymentMethod: 'online',
@@ -46,6 +46,11 @@ function Checkout() {
 
       const totalPrice = getCartTotal() + 40;
 
+      // Calculate delivery date - exactly 7 days from now
+      const deliveryDate = new Date();
+      deliveryDate.setDate(deliveryDate.getDate() + 7);
+      deliveryDate.setHours(14, 0, 0, 0); // Set time to 2:00 PM
+
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -56,6 +61,7 @@ function Checkout() {
           payment_status: formData.paymentMethod === 'offline' ? 'pending' : 'pending',
           delivery_address: formData.address,
           phone: formData.phone,
+          delivery_date: deliveryDate.toISOString(),
         })
         .select()
         .single();
@@ -91,6 +97,7 @@ function Checkout() {
         }
       }
 
+      // Handle payment
       if (formData.paymentMethod === 'online') {
         initiatePayment(order.id, totalPrice);
       } else {
@@ -108,13 +115,14 @@ function Checkout() {
 
   const initiatePayment = (orderId: string, amount: number) => {
     const options = {
-      key: 'rzp_test_YOUR_KEY_HERE',
-      amount: amount * 100,
+      key: 'rzp_test_YOUR_KEY_HERE', // Replace with your Razorpay test key
+      amount: amount * 100, // Amount in paise
       currency: 'INR',
       name: 'Live MART',
       description: 'Order Payment',
       order_id: orderId,
       handler: async function (_response: any) {
+        // Payment successful
         await supabase
           .from('orders')
           .update({ payment_status: 'completed' })
@@ -163,6 +171,7 @@ function Checkout() {
       <h1 className="text-3xl font-bold mb-6">Checkout</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Order Summary */}
         <div className="border rounded-lg p-4 bg-gray-50">
           <h2 className="font-bold text-lg mb-2">Order Summary</h2>
           {cartItems.map(item => (
@@ -177,6 +186,7 @@ function Checkout() {
           </div>
         </div>
 
+        {/* Phone Number */}
         <div>
           <label className="block font-semibold mb-2">Phone Number *</label>
           <input
@@ -190,6 +200,7 @@ function Checkout() {
           />
         </div>
 
+        {/* Delivery Address */}
         <div>
           <label className="block font-semibold mb-2">Delivery Address *</label>
           <textarea
@@ -203,6 +214,31 @@ function Checkout() {
           />
         </div>
 
+        {/* Delivery Date Info - Auto-calculated, NO INPUT */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span className="font-semibold text-blue-900">Estimated Delivery</span>
+          </div>
+          <p className="text-2xl font-bold text-blue-600">
+            {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric'
+            })}
+          </p>
+          <p className="text-sm text-blue-700 mt-1">
+            📦 All orders delivered within 7 days
+          </p>
+          <p className="text-xs text-gray-600 mt-2">
+            ⏰ Delivery Time: 2:00 PM - 4:00 PM
+          </p>
+        </div>
+
+        {/* Payment Method */}
         <div>
           <label className="block font-semibold mb-2">Payment Method</label>
           <div className="space-y-2">
@@ -231,6 +267,7 @@ function Checkout() {
           </div>
         </div>
 
+        {/* Place Order Button */}
         <button
           type="submit"
           disabled={loading}

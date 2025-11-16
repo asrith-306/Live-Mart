@@ -12,6 +12,7 @@ interface Order {
   delivery_address: string;
   phone: string;
   created_at: string;
+  delivery_date?: string;
 }
 
 function OrderSuccess() {
@@ -43,6 +44,31 @@ function OrderSuccess() {
     }
   };
 
+  // Calculate delivery date (7 days from order creation)
+  const getDeliveryDate = () => {
+    if (!order) return null;
+    
+    // Use delivery_date from database if available
+    if (order.delivery_date) {
+      return new Date(order.delivery_date);
+    }
+    
+    // Otherwise calculate 7 days from order creation
+    const orderDate = new Date(order.created_at);
+    const deliveryDate = new Date(orderDate);
+    deliveryDate.setDate(deliveryDate.getDate() + 7);
+    return deliveryDate;
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-IN', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
@@ -50,6 +76,8 @@ function OrderSuccess() {
       </div>
     );
   }
+
+  const deliveryDate = getDeliveryDate();
 
   return (
     <div className="container mx-auto px-4 py-8 text-center max-w-md">
@@ -63,12 +91,37 @@ function OrderSuccess() {
       <p className="text-gray-600 mb-6">Thank you for your purchase</p>
 
       {order && (
-        <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
-          <p className="py-1"><strong>Order ID:</strong> {order.id.slice(0, 8)}</p>
-          <p className="py-1"><strong>Total:</strong> ₹{order.total_price}</p>
-          <p className="py-1"><strong>Status:</strong> <span className="capitalize">{order.status}</span></p>
-          <p className="py-1"><strong>Payment:</strong> <span className="capitalize">{order.payment_method}</span></p>
-        </div>
+        <>
+          <div className="bg-gray-50 rounded-lg p-4 mb-4 text-left">
+            <p className="py-1"><strong>Order ID:</strong> {order.id.slice(0, 8)}</p>
+            <p className="py-1"><strong>Total:</strong> ₹{order.total_price}</p>
+            <p className="py-1"><strong>Status:</strong> <span className="capitalize">{order.status}</span></p>
+            <p className="py-1"><strong>Payment:</strong> <span className="capitalize">{order.payment_method}</span></p>
+          </div>
+
+          {/* DELIVERY DATE - HIGHLIGHTED BOX */}
+          <div className="bg-blue-50 border-2 border-blue-400 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <span className="text-2xl">📦</span>
+              <p className="text-sm font-semibold text-blue-800">Expected Delivery Date</p>
+            </div>
+            {deliveryDate ? (
+              <>
+                <p className="font-bold text-xl text-blue-900 mb-1">
+                  {formatDate(deliveryDate)}
+                </p>
+                <p className="text-sm text-blue-700 mb-2">
+                  Time: 10:00 AM - 8:00 PM
+                </p>
+                <p className="text-xs text-gray-600">
+                  ✅ Delivery within 7 days from order date
+                </p>
+              </>
+            ) : (
+              <p className="text-blue-700">Calculating delivery date...</p>
+            )}
+          </div>
+        </>
       )}
 
       <div className="space-y-3">
@@ -84,6 +137,12 @@ function OrderSuccess() {
         >
           Continue Shopping
         </button>
+      </div>
+
+      <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+        <p className="text-xs text-yellow-800">
+          📧 You'll receive email reminders before delivery if you've connected Google Calendar
+        </p>
       </div>
     </div>
   );
