@@ -1,158 +1,241 @@
-import { useState } from "react"
-import { signUpUser, signInWithGoogle } from "./services/authService.js"
+import { useState } from "react";
+import { supabase } from "./utils/supabaseClient";
+import { useNavigate } from "react-router-dom";
+import { User, Store, Truck, Package } from "lucide-react";
 
-type SignupForm = {
-  name: string
-  email: string
-  password: string
-  role: "customer" | "retailer" | "wholesaler"
-  phone: string
-  location: string
-}
+function Signup() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [role, setRole] = useState<"customer" | "retailer" | "wholesaler" | "delivery_partner">("customer");
+  const [vehicleType, setVehicleType] = useState(""); // For delivery partners
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-export default function Signup() {
-  const [form, setForm] = useState<SignupForm>({
-    name: "",
-    email: "",
-    password: "",
-    role: "customer",
-    phone: "",
-    location: "",
-  })
-
-  const [loading, setLoading] = useState(false)
-  const [googleLoading, setGoogleLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target
-    setForm(prev => ({
-      ...prev,
-      [name]: name === "role" ? (value as SignupForm["role"]) : value,
-    }))
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
     try {
-      await signUpUser(form)
-      setSuccess(true)
+      // 1. Sign up with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // 2. Insert user details into users table
+        const { error: userError } = await supabase.from("users").insert({
+          auth_id: authData.user.id,
+          email,
+          name,
+          phone,
+          role,
+        });
+
+        if (userError) {
+          console.error("User table error:", userError);
+          throw userError;
+        }
+
+        // 3. If delivery partner, create delivery partner profile
+        if (role === "delivery_partner") {
+          console.log("Creating delivery partner with auth_id:", authData.user.id);
+          
+          const { error: partnerError } = await supabase
+            .from("delivery_partners")
+            .insert({
+              auth_id: authData.user.id,  // ✅ Fixed: use auth_id instead of id
+              name: name,
+              phone: phone,
+              vehicle_type: vehicleType,
+              is_available: true,  // ✅ Fixed: use is_available instead of is_online
+            });
+
+          if (partnerError) {
+            console.error("Delivery partner error:", partnerError);
+            throw partnerError;
+          }
+          
+          console.log("Delivery partner created successfully!");
+        }
+
+        alert("✅ Signup successful! You can now login.");
+        navigate("/login");
+      }
     } catch (err: any) {
-      setError(err.message)
+      console.error("Signup error:", err);
+      setError(err.message || "Signup failed");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const handleGoogleSignup = async () => {
-    setGoogleLoading(true)
-    setError(null)
-    try {
-      await signInWithGoogle()
-      // Supabase redirects automatically on success
-    } catch (err: any) {
-      setError(err.message)
-      setGoogleLoading(false)
-    }
-  }
+  const roleOptions = [
+    { value: "customer", label: "Customer", icon: User, color: "blue", description: "Shop and order products" },
+    { value: "retailer", label: "Retailer", icon: Store, color: "purple", description: "Manage store inventory" },
+    { value: "wholesaler", label: "Wholesaler", icon: Package, color: "green", description: "Supply products in bulk" },
+    { value: "delivery_partner", label: "Delivery Partner", icon: Truck, color: "orange", description: "Deliver orders to customers" },
+  ];
 
   return (
-    <div className="space-y-4 p-4 max-w-md mx-auto border rounded">
-      <h2 className="text-xl font-bold text-center">Signup</h2>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full">
+        <h1 className="text-3xl font-bold text-center mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          Create Account
+        </h1>
+        <p className="text-center text-gray-600 mb-6">Join Live MART today</p>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          name="name"
-          placeholder="Full Name"
-          value={form.name}
-          onChange={handleChange}
-          className="border p-2 w-full"
-          required
-        />
-
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={handleChange}
-          className="border p-2 w-full"
-          required
-        />
-
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={handleChange}
-          className="border p-2 w-full"
-          required
-        />
-
-        <select
-          name="role"
-          value={form.role}
-          onChange={handleChange}
-          className="border p-2 w-full"
-        >
-          <option value="customer">Customer</option>
-          <option value="retailer">Retailer</option>
-          <option value="wholesaler">Wholesaler</option>
-        </select>
-
-        {(form.role === "retailer" ||
-          form.role === "wholesaler" ||
-          form.role === "customer") && (
-          <>
-            <input
-              name="phone"
-              placeholder="Phone Number"
-              value={form.phone}
-              onChange={handleChange}
-              className="border p-2 w-full"
-              required
-            />
-            <input
-              name="location"
-              placeholder="Location"
-              value={form.location}
-              onChange={handleChange}
-              className="border p-2 w-full"
-              required
-            />
-          </>
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+            {error}
+          </div>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-blue-600 text-white px-4 py-2 rounded w-full"
-        >
-          {loading ? "Signing up..." : "Signup"}
-        </button>
-      </form>
+        <form onSubmit={handleSignup} className="space-y-4">
+          {/* Role Selection */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Select Your Role
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {roleOptions.map((option) => {
+                const Icon = option.icon;
+                const isSelected = role === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setRole(option.value as any)}
+                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                      isSelected
+                        ? `border-${option.color}-500 bg-${option.color}-50`
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Icon className={`w-5 h-5 ${isSelected ? `text-${option.color}-600` : "text-gray-500"}`} />
+                      <span className={`font-semibold ${isSelected ? `text-${option.color}-700` : "text-gray-700"}`}>
+                        {option.label}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500">{option.description}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-      {/* Google Signup */}
-      <div className="text-center mt-4">
-        <p className="text-gray-500 text-sm mb-2">or</p>
-        <button
-          onClick={handleGoogleSignup}
-          disabled={googleLoading}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded w-full"
-        >
-          {googleLoading ? "Redirecting..." : "Continue with Google"}
-        </button>
+          {/* Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Full Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter your full name"
+            />
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email Address
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="your@email.com"
+            />
+          </div>
+
+          {/* Phone */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="+91 XXXXXXXXXX"
+            />
+          </div>
+
+          {/* Vehicle Type - Only for Delivery Partners */}
+          {role === "delivery_partner" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Vehicle Type
+              </label>
+              <select
+                value={vehicleType}
+                onChange={(e) => setVehicleType(e.target.value)}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select vehicle type</option>
+                <option value="Bike">Bike/Motorcycle</option>
+                <option value="Scooter">Scooter</option>
+                <option value="Car">Car</option>
+                <option value="Van">Van</option>
+                <option value="Bicycle">Bicycle</option>
+              </select>
+            </div>
+          )}
+
+          {/* Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Minimum 6 characters"
+            />
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          >
+            {loading ? "Creating Account..." : "Sign Up"}
+          </button>
+        </form>
+
+        <p className="text-center text-gray-600 mt-6">
+          Already have an account?{" "}
+          <button
+            onClick={() => navigate("/login")}
+            className="text-blue-600 font-semibold hover:underline"
+          >
+            Login
+          </button>
+        </p>
       </div>
-
-      {error && <p className="text-red-600 text-center mt-2">{error}</p>}
-      {success && <p className="text-green-600 text-center mt-2">Signup successful!</p>}
     </div>
-  )
+  );
 }
+
+export default Signup;

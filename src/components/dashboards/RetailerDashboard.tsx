@@ -1,5 +1,6 @@
 // src/components/dashboards/RetailerDashboard.tsx
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   fetchProducts, 
   fetchDeletedProducts,
@@ -13,6 +14,7 @@ import {
 } from '@/services/productService';
 import ProductCard from '@/components/products/ProductCard';
 import ProductForm from '@/components/products/ProductForm';
+import { Package, ShoppingCart, Truck } from 'lucide-react';
 
 const RetailerDashboard = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -27,6 +29,7 @@ const RetailerDashboard = () => {
     quantity: '',
     sellingPrice: ''
   });
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadProducts();
@@ -199,10 +202,67 @@ const RetailerDashboard = () => {
 
   return (
     <div className="p-8">
+      {/* Quick Actions Banner */}
+      <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-6 mb-6">
+        <h2 className="text-white text-2xl font-bold mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Manage Products */}
+          <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-4 text-white">
+            <div className="flex items-center gap-3 mb-2">
+              <Package className="w-6 h-6" />
+              <h3 className="font-semibold text-lg">Products</h3>
+            </div>
+            <p className="text-sm text-white text-opacity-90 mb-3">
+              {products.length} products in inventory
+            </p>
+            <button
+              onClick={() => setViewMode('wholesaler')}
+              className="w-full bg-white text-blue-600 py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
+            >
+              Source Products
+            </button>
+          </div>
+
+          {/* Order Management */}
+          <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-4 text-white">
+            <div className="flex items-center gap-3 mb-2">
+              <ShoppingCart className="w-6 h-6" />
+              <h3 className="font-semibold text-lg">Orders</h3>
+            </div>
+            <p className="text-sm text-white text-opacity-90 mb-3">
+              Manage customer orders
+            </p>
+            <button
+              onClick={() => navigate('/order-management')}
+              className="w-full bg-white text-purple-600 py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
+            >
+              View Orders
+            </button>
+          </div>
+
+          {/* Delivery Partners */}
+          <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-4 text-white">
+            <div className="flex items-center gap-3 mb-2">
+              <Truck className="w-6 h-6" />
+              <h3 className="font-semibold text-lg">Delivery</h3>
+            </div>
+            <p className="text-sm text-white text-opacity-90 mb-3">
+              Assign delivery partners
+            </p>
+            <button
+              onClick={() => navigate('/order-management')}
+              className="w-full bg-white text-green-600 py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
+            >
+              Manage Delivery
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Header with View Toggle */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
-          <h1 className="text-3xl font-bold">Retailer Dashboard</h1>
+          <h1 className="text-3xl font-bold">Product Inventory</h1>
           
           {/* View Mode Toggle */}
           <div className="flex bg-gray-200 rounded-lg p-1">
@@ -241,6 +301,45 @@ const RetailerDashboard = () => {
 
         {/* Note: No Add Product button - retailers can only source from wholesalers */}
       </div>
+
+      {/* Products Grid for Active View */}
+      {viewMode === 'active' && (
+        <>
+          {products.length === 0 && (
+            <div className="text-center mt-12">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 max-w-2xl mx-auto">
+                <div className="text-6xl mb-4">🏭</div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  No Products in Your Inventory
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  As a retailer, you source products from wholesalers. Browse the wholesaler catalog to add products to your inventory.
+                </p>
+                <button
+                  onClick={() => setViewMode('wholesaler')}
+                  className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 font-semibold"
+                >
+                  Browse Wholesaler Catalog →
+                </button>
+              </div>
+            </div>
+          )}
+          {products.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {products.map(product => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onEdit={handleEdit}
+                  onDelete={handleDeleteProduct}
+                  isRetailer={true}
+                  isTrashView={false}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
       {/* Wholesaler Products View */}
       {viewMode === 'wholesaler' && (
@@ -284,45 +383,6 @@ const RetailerDashboard = () => {
             </div>
           )}
         </div>
-      )}
-
-      {/* Active Products View */}
-      {viewMode === 'active' && (
-        <>
-          {products.length === 0 && (
-            <div className="text-center mt-12">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 max-w-2xl mx-auto">
-                <div className="text-6xl mb-4">🏭</div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  No Products in Your Inventory
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  As a retailer, you source products from wholesalers. Browse the wholesaler catalog to add products to your inventory.
-                </p>
-                <button
-                  onClick={() => setViewMode('wholesaler')}
-                  className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 font-semibold"
-                >
-                  Browse Wholesaler Catalog →
-                </button>
-              </div>
-            </div>
-          )}
-          {products.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {products.map(product => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onEdit={handleEdit}
-                  onDelete={handleDeleteProduct}
-                  isRetailer={true}
-                  isTrashView={false}
-                />
-              ))}
-            </div>
-          )}
-        </>
       )}
 
       {/* Trash View */}
