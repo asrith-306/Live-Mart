@@ -1,68 +1,243 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
+@layer base {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    /* Base Colors */
+    --background: 0 0% 100%;
+    --foreground: 220 20% 15%;
+
+    /* Card Colors */
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 15%;
+
+    /* Popover Colors */
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 15%;
+
+    /* Primary - Vibrant Teal/Cyan */
+    --primary: 185 80% 45%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 185 80% 60%;
+
+    /* Secondary - Soft Blue Gray */
+    --secondary: 210 20% 95%;
+    --secondary-foreground: 220 20% 20%;
+
+    /* Muted Colors */
+    --muted: 210 25% 96%;
+    --muted-foreground: 220 15% 45%;
+
+    /* Accent - Vibrant Orange/Coral */
+    --accent: 15 85% 60%;
+    --accent-foreground: 0 0% 100%;
+    --accent-glow: 15 85% 70%;
+
+    /* Success Color */
+    --success: 150 75% 45%;
+    --success-foreground: 0 0% 100%;
+
+    /* Destructive Colors */
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border & Input */
+    --border: 220 15% 88%;
+    --input: 220 15% 90%;
+    --ring: 185 80% 45%;
+
+    /* Radius */
+    --radius: 0.75rem;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(185 80% 45%), hsl(185 80% 60%));
+    --gradient-accent: linear-gradient(135deg, hsl(15 85% 60%), hsl(25 90% 65%));
+    --gradient-hero: linear-gradient(135deg, hsl(185 80% 45%) 0%, hsl(200 85% 50%) 50%, hsl(15 85% 60%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(210 25% 98%));
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(220 20% 15% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(220 20% 15% / 0.1), 0 2px 4px -2px hsl(220 20% 15% / 0.1);
+    --shadow-lg: 0 10px 15px -3px hsl(220 20% 15% / 0.1), 0 4px 6px -4px hsl(220 20% 15% / 0.1);
+    --shadow-xl: 0 20px 25px -5px hsl(220 20% 15% / 0.1), 0 8px 10px -6px hsl(220 20% 15% / 0.1);
+    --shadow-glow: 0 0 40px hsl(185 80% 60% / 0.3);
+    --shadow-glow-accent: 0 0 40px hsl(15 85% 60% / 0.3);
+
+    /* Transitions */
+    --transition-base: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 220 20% 20%;
+    --sidebar-primary: 185 80% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 20% 95%;
+    --sidebar-accent-foreground: 220 20% 20%;
+    --sidebar-border: 220 15% 88%;
+    --sidebar-ring: 185 80% 45%;
   }
-  a:hover {
-    color: #747bff;
+
+  .dark {
+    /* Base Colors */
+    --background: 220 25% 8%;
+    --foreground: 210 20% 95%;
+
+    /* Card Colors */
+    --card: 220 25% 12%;
+    --card-foreground: 210 20% 95%;
+
+    /* Popover Colors */
+    --popover: 220 25% 10%;
+    --popover-foreground: 210 20% 95%;
+
+    /* Primary */
+    --primary: 185 75% 55%;
+    --primary-foreground: 220 25% 8%;
+    --primary-glow: 185 75% 65%;
+
+    /* Secondary */
+    --secondary: 220 20% 18%;
+    --secondary-foreground: 210 20% 95%;
+
+    /* Muted */
+    --muted: 220 20% 16%;
+    --muted-foreground: 220 15% 65%;
+
+    /* Accent */
+    --accent: 15 80% 55%;
+    --accent-foreground: 0 0% 100%;
+    --accent-glow: 15 80% 65%;
+
+    /* Success */
+    --success: 150 70% 50%;
+    --success-foreground: 0 0% 100%;
+
+    /* Destructive */
+    --destructive: 0 80% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border & Input */
+    --border: 220 20% 20%;
+    --input: 220 20% 18%;
+    --ring: 185 75% 55%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(185 75% 45%), hsl(185 75% 60%));
+    --gradient-accent: linear-gradient(135deg, hsl(15 80% 55%), hsl(25 85% 60%));
+    --gradient-hero: linear-gradient(135deg, hsl(185 75% 45%) 0%, hsl(200 80% 50%) 50%, hsl(15 80% 55%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(220 25% 12%), hsl(220 25% 14%));
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.2);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -2px hsl(0 0% 0% / 0.2);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.4), 0 4px 6px -4px hsl(0 0% 0% / 0.3);
+    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.5), 0 8px 10px -6px hsl(0 0% 0% / 0.4);
+    --shadow-glow: 0 0 40px hsl(185 75% 55% / 0.4);
+    --shadow-glow-accent: 0 0 40px hsl(15 80% 55% / 0.4);
+
+    /* Sidebar */
+    --sidebar-background: 220 25% 10%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 185 75% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 20% 18%;
+    --sidebar-accent-foreground: 210 20% 90%;
+    --sidebar-border: 220 20% 20%;
+    --sidebar-ring: 185 75% 55%;
   }
-  button {
-    background-color: #f9f9f9;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-accent {
+    background: var(--gradient-accent);
+  }
+
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .shadow-glow-accent {
+    box-shadow: var(--shadow-glow-accent);
+  }
+
+  .transition-base {
+    transition: var(--transition-base);
+  }
+
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.6s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.8s ease-out;
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 }
