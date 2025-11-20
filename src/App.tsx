@@ -16,6 +16,14 @@ import OrderTracking from "./pages/OrderTracking";
 import DeliveryPartnerDashboard from './pages/DeliveryPartnerDashboard';
 import OrderManagement from "./components/order-management";
 import AuthCallback from "./components/AuthCallback";
+import MockPaymentGateway from "./MockPaymentGateway";
+
+type Product = {
+  id: string;
+  name: string;
+  price?: number;
+  category?: string;
+};
 import './index.css';
 
 type UserRole = "customer" | "retailer" | "wholesaler" | "delivery_partner" | null;
@@ -339,6 +347,7 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route path="/mock-payment" element={<MockPaymentGateway />} />
           <Route 
             path="/orders" 
             element={
