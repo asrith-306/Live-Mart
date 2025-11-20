@@ -12,12 +12,6 @@ interface FormData {
   longitude?: number;
 }
 
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
-
 function Checkout() {
   const { cartItems, getCartTotal, clearCart } = useCart();
   const navigate = useNavigate();
@@ -151,7 +145,7 @@ function Checkout() {
 
       // Handle payment
       if (formData.paymentMethod === 'online') {
-        initiatePayment(order.id, totalPrice);
+        redirectToMockPayment(order.id, totalPrice);
       } else {
         // For offline payment, mark order as confirmed
         await supabase
@@ -174,51 +168,12 @@ function Checkout() {
     }
   };
 
-  const initiatePayment = (orderId: string, amount: number) => {
-    const options = {
-      key: 'rzp_test_YOUR_KEY_HERE', // Replace with your Razorpay key
-      amount: amount * 100,
-      currency: 'INR',
-      name: 'Live MART',
-      description: 'Order Payment',
-      order_id: orderId,
-      handler: async function (_response: any) {
-        // Update payment and delivery status
-        await supabase
-          .from('orders')
-          .update({ 
-            payment_status: 'paid',
-            delivery_status: 'confirmed',
-            status: 'confirmed'
-          })
-          .eq('id', orderId);
-
-        clearCart();
-        navigate(`/order-success/${orderId}`);
-      },
-      prefill: {
-        contact: formData.phone,
-      },
-      theme: {
-        color: '#3B82F6',
-      },
-    };
-
-    const rzp = new window.Razorpay(options);
-    rzp.open();
-
-    rzp.on('payment.failed', async function () {
-      await supabase
-        .from('orders')
-        .update({ 
-          payment_status: 'failed', 
-          status: 'cancelled',
-          delivery_status: 'cancelled'
-        })
-        .eq('id', orderId);
-      
-      alert('Payment failed. Please try again.');
-    });
+  const redirectToMockPayment = (orderId: string, amount: number) => {
+    // Create a mock payment gateway URL with order details
+    const mockPaymentUrl = `/mock-payment?orderId=${orderId}&amount=${amount}&phone=${encodeURIComponent(formData.phone)}`;
+    
+    // Redirect to mock payment page
+    navigate(mockPaymentUrl);
   };
 
   if (cartItems.length === 0) {
@@ -316,7 +271,7 @@ function Checkout() {
                     />
                     <div>
                       <p className="font-semibold text-gray-800">Online Payment</p>
-                      <p className="text-sm text-gray-500">Pay securely via Razorpay</p>
+                      <p className="text-sm text-gray-500">Pay via Mock Payment Gateway</p>
                     </div>
                   </label>
                   

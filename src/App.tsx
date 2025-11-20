@@ -19,6 +19,7 @@ import DeliveryPartnerDashboard from './pages/DeliveryPartnerDashboard';
 import OrderManagement from "./components/order-management";
 import './index.css'
 import AuthCallback from "./components/AuthCallback";
+import MockPaymentGateway from "./MockPaymentGateway";
 
 type Product = {
   id: string;
@@ -363,6 +364,7 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route path="/mock-payment" element={<MockPaymentGateway />} />
           <Route 
             path="/orders" 
             element={
