@@ -29,6 +29,7 @@ const RetailerDashboard = () => {
     quantity: '',
     sellingPrice: ''
   });
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -57,6 +58,7 @@ const RetailerDashboard = () => {
   };
 
   const handleAddFromWholesaler = (product: Product) => {
+    console.log('Opening modal for product:', product);
     setSelectedWholesalerProduct(product);
     setOrderForm({
       quantity: '',
@@ -66,40 +68,97 @@ const RetailerDashboard = () => {
   };
 
   const handleConfirmAddFromWholesaler = async () => {
-    if (!selectedWholesalerProduct) return;
-
-    const quantity = parseInt(orderForm.quantity);
-    const sellingPrice = parseFloat(orderForm.sellingPrice);
-
-    if (!quantity || quantity <= 0) {
-      alert('Please enter a valid quantity');
+    if (!selectedWholesalerProduct) {
+      alert('No product selected');
       return;
     }
 
-    if (!sellingPrice || sellingPrice <= 0) {
-      alert('Please enter a valid selling price');
+    // Parse and validate inputs
+    const quantityStr = orderForm.quantity.trim();
+    const sellingPriceStr = orderForm.sellingPrice.trim();
+
+    if (!quantityStr) {
+      alert('Please enter a quantity');
       return;
     }
 
-    if (quantity > selectedWholesalerProduct.stock) {
-      alert(`Only ${selectedWholesalerProduct.stock} units available`);
+    if (!sellingPriceStr) {
+      alert('Please enter a selling price');
+      return;
+    }
+
+    const quantity = parseInt(quantityStr, 10);
+    const sellingPrice = parseFloat(sellingPriceStr);
+
+    console.log('Parsed values:', { quantity, sellingPrice, isNaNQty: isNaN(quantity), isNaNPrice: isNaN(sellingPrice) });
+
+    if (isNaN(quantity) || quantity <= 0) {
+      alert('Please enter a valid quantity (must be a positive number)');
+      return;
+    }
+
+    if (isNaN(sellingPrice) || sellingPrice <= 0) {
+      alert('Please enter a valid selling price (must be a positive number)');
+      return;
+    }
+
+    if (!selectedWholesalerProduct.stock || quantity > selectedWholesalerProduct.stock) {
+      alert(`Only ${selectedWholesalerProduct.stock || 0} units available`);
+      return;
+    }
+
+    // Check required fields
+    if (!selectedWholesalerProduct.id) {
+      alert('Invalid product: missing product ID');
+      console.error('Product missing ID:', selectedWholesalerProduct);
+      return;
+    }
+
+    if (!selectedWholesalerProduct.wholesaler_id) {
+      alert('Invalid product: missing wholesaler ID');
+      console.error('Product missing wholesaler_id:', selectedWholesalerProduct);
       return;
     }
 
     try {
+      setSubmitting(true);
+      console.log('Starting order process:', {
+        productId: selectedWholesalerProduct.id,
+        productName: selectedWholesalerProduct.name,
+        wholesalerId: selectedWholesalerProduct.wholesaler_id,
+        quantity,
+        sellingPrice,
+        wholesalerPrice: selectedWholesalerProduct.price
+      });
+
       await addRetailerProductFromWholesaler(
         selectedWholesalerProduct,
         quantity,
         sellingPrice
       );
+
+      console.log('✅ Product added successfully!');
+      
+      // Close modal and reset form
       setShowAddFromWholesaler(false);
       setSelectedWholesalerProduct(null);
       setOrderForm({ quantity: '', sellingPrice: '' });
+      
+      // Switch to active view
       setViewMode('active');
+      
       alert('Product added to your inventory successfully!');
-    } catch (error) {
-      console.error('Failed to add product:', error);
-      alert('Failed to add product. Check console for details.');
+    } catch (error: any) {
+      console.error('❌ Failed to add product:', error);
+      console.error('Error message:', error?.message);
+      console.error('Error details:', error?.details);
+      console.error('Error hint:', error?.hint);
+      console.error('Error code:', error?.code);
+      
+      const errorMessage = error?.message || error?.details || 'Unknown error occurred';
+      alert(`Failed to add product: ${errorMessage}\n\nCheck console for more details.`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -298,8 +357,6 @@ const RetailerDashboard = () => {
             </button>
           </div>
         </div>
-
-        {/* Note: No Add Product button - retailers can only source from wholesalers */}
       </div>
 
       {/* Products Grid for Active View */}
@@ -435,31 +492,45 @@ const RetailerDashboard = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Quantity to Order
+                  Quantity to Order *
                 </label>
                 <input
                   type="number"
                   min="1"
                   max={selectedWholesalerProduct.stock}
                   value={orderForm.quantity}
-                  onChange={(e) => setOrderForm({...orderForm, quantity: e.target.value})}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d+$/.test(value)) {
+                      setOrderForm({...orderForm, quantity: value});
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter quantity"
+                  required
+                  disabled={submitting}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Your Selling Price (₹)
+                  Your Selling Price (₹) *
                 </label>
                 <input
                   type="number"
                   step="0.01"
-                  min="0"
+                  min="0.01"
                   value={orderForm.sellingPrice}
-                  onChange={(e) => setOrderForm({...orderForm, sellingPrice: e.target.value})}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      setOrderForm({...orderForm, sellingPrice: value});
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter your selling price"
+                  required
+                  disabled={submitting}
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Cost: ₹{selectedWholesalerProduct.price} | 
@@ -495,9 +566,14 @@ const RetailerDashboard = () => {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={handleConfirmAddFromWholesaler}
-                className="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                disabled={submitting}
+                className={`flex-1 py-2 rounded-lg transition-colors ${
+                  submitting 
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                }`}
               >
-                Confirm & Add
+                {submitting ? 'Processing...' : 'Confirm & Add'}
               </button>
               <button
                 onClick={() => {
@@ -505,7 +581,12 @@ const RetailerDashboard = () => {
                   setSelectedWholesalerProduct(null);
                   setOrderForm({ quantity: '', sellingPrice: '' });
                 }}
-                className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                disabled={submitting}
+                className={`flex-1 py-2 rounded-lg transition-colors ${
+                  submitting
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                }`}
               >
                 Cancel
               </button>
