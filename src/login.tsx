@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { loginUser, loginWithGoogle, checkUserExists, createUserProfile } from "./services/authService"
+import { loginWithGoogle, checkUserExists, createUserProfile } from "./services/authService"
 import { supabase } from "./utils/supabaseClient"
 
 type LoginForm = { email: string; password: string }
@@ -23,6 +23,7 @@ export default function Login({ onLogin }: LoginProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showProfileForm, setShowProfileForm] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
   const [profile, setProfile] = useState<ProfileForm>({
     name: "",
     phone: "",
@@ -43,14 +44,12 @@ export default function Login({ onLogin }: LoginProps) {
         setShowProfileForm(true)
       } else {
         if (onLogin) onLogin(user.id);
-        // Redirect based on role
         redirectBasedOnRole(existing.role);
       }
     }
     checkSession()
   }, [])
 
-  // ✅ FIXED: Now routes wholesalers to /wholesaler
   const redirectBasedOnRole = (role: string) => {
     if (role === "customer") {
       navigate("/customer");
@@ -58,8 +57,10 @@ export default function Login({ onLogin }: LoginProps) {
       navigate("/retailer");
     } else if (role === "wholesaler") {
       navigate("/wholesaler");
+    } else if (role === "delivery_partner") {
+      navigate("/delivery-dashboard");
     } else {
-      navigate("/customer"); // default
+      navigate("/customer");
     }
   };
 
@@ -73,36 +74,39 @@ export default function Login({ onLogin }: LoginProps) {
     setProfile(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await loginUser(form)
-      
-      if (result.user && onLogin) {
-        onLogin(result.user.id);
+  // Update the handleSubmit function in your Login.tsx file:
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  setLoading(true)
+  setError(null)
+  
+  try {
+    // Send magic link to email
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: form.email.trim().toLowerCase(), // Ensure clean email
+      options: {
+        // IMPORTANT: Use the correct callback URL
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        // Don't require email verification for magic links
+        shouldCreateUser: true
       }
-      
-      // Fetch user role and redirect accordingly
-      const { data: userData } = await supabase
-        .from("users")
-        .select("role")
-        .eq("auth_id", result.user.id)
-        .single();
-      
-      if (userData) {
-        redirectBasedOnRole(userData.role);
-      } else {
-        navigate("/customer"); // default
-      }
-      
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+    });
+
+    if (otpError) {
+      console.error("OTP Error:", otpError);
+      throw otpError;
     }
+
+    setEmailSent(true);
+    
+  } catch (err: any) {
+    console.error("Login error:", err);
+    setError(err.message || "Failed to send magic link. Please try again.");
+  } finally {
+    setLoading(false)
   }
+}
 
   const handleGoogleLogin = async () => {
     try {
@@ -133,7 +137,6 @@ export default function Login({ onLogin }: LoginProps) {
         onLogin(user.id);
       }
       
-      // Redirect based on selected role
       redirectBasedOnRole(profile.role);
       
     } catch (err: any) {
@@ -143,109 +146,173 @@ export default function Login({ onLogin }: LoginProps) {
     }
   }
 
+  // Show email sent confirmation
+  if (emailSent) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+          <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+          
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">
+            Check Your Email! 📧
+          </h2>
+          
+          <p className="text-gray-600 mb-2">
+            We've sent a magic link to
+          </p>
+          <p className="text-blue-600 font-semibold mb-6">{form.email}</p>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-gray-700">
+              Click the link in your email to securely log in. The link will expire in 60 minutes.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setEmailSent(false)}
+            className="text-blue-600 font-semibold hover:underline"
+          >
+            ← Back to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Show profile form if new Google user
   if (showProfileForm) {
     return (
-      <form
-        onSubmit={handleProfileSubmit}
-        className="space-y-4 p-4 max-w-md mx-auto border rounded"
-      >
-        <h2 className="text-xl font-bold">Complete Your Profile</h2>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+          <h2 className="text-2xl font-bold text-center mb-6">Complete Your Profile</h2>
 
-        <input
-          name="name"
-          placeholder="Full Name"
-          value={profile.name}
-          onChange={handleProfileChange}
-          className="border p-2 w-full"
-          required
-        />
+          <form onSubmit={handleProfileSubmit} className="space-y-4">
+            <input
+              name="name"
+              placeholder="Full Name"
+              value={profile.name}
+              onChange={handleProfileChange}
+              className="border p-3 w-full rounded-lg"
+              required
+            />
 
-        <input
-          name="phone"
-          placeholder="Phone Number"
-          value={profile.phone}
-          onChange={handleProfileChange}
-          className="border p-2 w-full"
-          required
-        />
+            <input
+              name="phone"
+              placeholder="Phone Number"
+              value={profile.phone}
+              onChange={handleProfileChange}
+              className="border p-3 w-full rounded-lg"
+              required
+            />
 
-        <select
-          name="role"
-          value={profile.role}
-          onChange={handleProfileChange}
-          className="border p-2 w-full"
-        >
-          <option value="customer">Customer</option>
-          <option value="retailer">Retailer</option>
-          <option value="wholesaler">Wholesaler</option>
-        </select>
+            <select
+              name="role"
+              value={profile.role}
+              onChange={handleProfileChange}
+              className="border p-3 w-full rounded-lg"
+            >
+              <option value="customer">Customer</option>
+              <option value="retailer">Retailer</option>
+              <option value="wholesaler">Wholesaler</option>
+            </select>
 
-        <input
-          name="location"
-          placeholder="Location"
-          value={profile.location}
-          onChange={handleProfileChange}
-          className="border p-2 w-full"
-          required
-        />
+            <input
+              name="location"
+              placeholder="Location"
+              value={profile.location}
+              onChange={handleProfileChange}
+              className="border p-3 w-full rounded-lg"
+              required
+            />
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-green-600 text-white px-4 py-2 rounded w-full"
-        >
-          {loading ? "Saving..." : "Save Profile"}
-        </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-lg w-full font-semibold"
+            >
+              {loading ? "Saving..." : "Save Profile"}
+            </button>
 
-        {error && <p className="text-red-600">{error}</p>}
-      </form>
+            {error && <p className="text-red-600 text-center">{error}</p>}
+          </form>
+        </div>
+      </div>
     )
   }
 
-  // Default: normal login page
+  // Default: Login page with Magic Link
   return (
-    <div className="space-y-4 p-4 max-w-md mx-auto border rounded">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <h2 className="text-xl font-bold">Login</h2>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+        <h1 className="text-3xl font-bold text-center mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          Welcome Back
+        </h1>
+        <p className="text-center text-gray-600 mb-6">Login to Live MART</p>
 
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={handleChange}
-          className="border p-2 w-full"
-          required
-        />
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+            {error}
+          </div>
+        )}
 
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={handleChange}
-          className="border p-2 w-full"
-          required
-        />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email Address
+            </label>
+            <input
+              type="email"
+              name="email"
+              placeholder="your@email.com"
+              value={form.email}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          >
+            {loading ? "Sending Magic Link..." : "Login with Email"}
+          </button>
+        </form>
+
+        <div className="my-6 flex items-center">
+          <div className="flex-1 border-t border-gray-300"></div>
+          <span className="px-4 text-gray-500 text-sm">OR</span>
+          <div className="flex-1 border-t border-gray-300"></div>
+        </div>
 
         <button
-          type="submit"
-          disabled={loading}
-          className="bg-blue-600 text-white px-4 py-2 rounded w-full"
+          onClick={handleGoogleLogin}
+          className="w-full bg-white border-2 border-gray-300 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-50 transition-all shadow-sm flex items-center justify-center gap-2"
         >
-          {loading ? "Logging in..." : "Login"}
+          <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          Continue with Google
         </button>
-      </form>
 
-      <button
-        onClick={handleGoogleLogin}
-        className="bg-red-600 text-white px-4 py-2 rounded w-full"
-      >
-        Login with Google
-      </button>
-
-      {error && <p className="text-red-600">{error}</p>}
+        <p className="text-center text-gray-600 mt-6">
+          Don't have an account?{" "}
+          <button
+            onClick={() => navigate("/signup")}
+            className="text-blue-600 font-semibold hover:underline"
+          >
+            Sign Up
+          </button>
+        </p>
+      </div>
     </div>
   )
 }

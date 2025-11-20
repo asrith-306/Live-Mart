@@ -18,6 +18,7 @@ import OrderTracking from "./pages/OrderTracking";
 import DeliveryPartnerDashboard from './pages/DeliveryPartnerDashboard';
 import OrderManagement from "./components/order-management";
 import './index.css'
+import AuthCallback from "./components/AuthCallback";
 
 type Product = {
   id: string;
@@ -285,6 +286,7 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           
           {/* 📦 Order Tracking - Only for customers */}
           <Route 
