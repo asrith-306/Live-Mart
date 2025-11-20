@@ -1,8 +1,8 @@
-// MockPaymentGateway.tsx
+// PaymentGateway.tsx
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from './utils/supabaseClient';
-import { Check, CreditCard, Lock, User, Calendar, Shield } from 'lucide-react';
+import { Check, CreditCard, Lock, User, Calendar, Shield, ArrowLeft } from 'lucide-react';
 
 interface CreditCardData {
   cardNumber: string;
@@ -15,7 +15,7 @@ function PaymentGateway() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'success'>('pending');
+  const [currentStep, setCurrentStep] = useState<'card' | 'otp' | 'success'>('card');
   
   const orderId = searchParams.get('orderId');
   const amount = searchParams.get('amount');
@@ -27,6 +27,9 @@ function PaymentGateway() {
     expiryDate: '',
     cvv: ''
   });
+
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otpLoading, setOtpLoading] = useState(false);
 
   const handleCardInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -51,7 +54,21 @@ function PaymentGateway() {
     }
   };
 
-  const processPayment = async () => {
+  const handleOtpChange = (index: number, value: string) => {
+    if (value.length <= 1 && /^\d*$/.test(value)) {
+      const newOtp = [...otp];
+      newOtp[index] = value;
+      setOtp(newOtp);
+
+      // Auto-focus next input
+      if (value && index < 5) {
+        const nextInput = document.getElementById(`otp-${index + 1}`);
+        if (nextInput) nextInput.focus();
+      }
+    }
+  };
+
+  const processCardPayment = async () => {
     setLoading(true);
     
     // Validate form
@@ -74,10 +91,21 @@ function PaymentGateway() {
     }
 
     // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Move to OTP step
+    setCurrentStep('otp');
+    setLoading(false);
+  };
+
+  const verifyOtp = async () => {
+    setOtpLoading(true);
+    
+    // Simulate OTP verification delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
     
     try {
-      // Update order status for successful payment
+      // Accept any OTP - update order status for successful payment
       await supabase
         .from('orders')
         .update({ 
@@ -87,7 +115,7 @@ function PaymentGateway() {
         })
         .eq('id', orderId);
       
-      setPaymentStatus('success');
+      setCurrentStep('success');
       
       // Redirect to success page after delay
       setTimeout(() => {
@@ -97,11 +125,13 @@ function PaymentGateway() {
       console.error('Payment processing error:', error);
       alert('Payment failed. Please try again.');
     } finally {
-      setLoading(false);
+      setOtpLoading(false);
     }
   };
 
-  if (paymentStatus === 'success') {
+  const isOtpComplete = otp.every(digit => digit !== '');
+
+  if (currentStep === 'success') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
@@ -111,6 +141,114 @@ function PaymentGateway() {
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Payment Successful!</h2>
           <p className="text-gray-600 mb-6">Your payment has been processed successfully.</p>
           <p className="text-sm text-gray-500">Redirecting to order confirmation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (currentStep === 'otp') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 py-8">
+        <div className="container mx-auto px-4 max-w-md">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                <Shield className="w-6 h-6 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900">SecurePay</h1>
+            </div>
+            <p className="text-gray-600">OTP Verification</p>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+            <div className="p-6">
+              {/* Back Button */}
+              <button
+                onClick={() => setCurrentStep('card')}
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6 text-sm font-medium"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Payment
+              </button>
+
+              {/* OTP Header */}
+              <div className="text-center mb-6">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Lock className="w-6 h-6 text-blue-600" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">Enter OTP</h2>
+                <p className="text-gray-600 text-sm">
+                  We've sent a 6-digit verification code to your mobile number ending with {phone?.slice(-4)}
+                </p>
+              </div>
+
+              {/* OTP Input */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3 text-center">
+                  6-Digit Verification Code
+                </label>
+                <div className="flex justify-center gap-2">
+                  {otp.map((digit, index) => (
+                    <input
+                      key={index}
+                      id={`otp-${index}`}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(index, e.target.value)}
+                      className="w-12 h-12 text-center text-lg font-semibold border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      autoFocus={index === 0}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Resend OTP */}
+              <div className="text-center mb-6">
+                <p className="text-sm text-gray-600">
+                  Didn't receive the code?{' '}
+                  <button className="text-blue-600 hover:text-blue-700 font-medium">
+                    Resend OTP
+                  </button>
+                </p>
+              </div>
+
+              {/* Verify Button */}
+              <button
+                onClick={verifyOtp}
+                disabled={!isOtpComplete || otpLoading}
+                className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-lg flex items-center justify-center gap-3 shadow-lg transition-all duration-200"
+              >
+                {otpLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Verifying OTP...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-5 h-5" />
+                    Verify & Complete Payment
+                  </>
+                )}
+              </button>
+
+              {/* Security Note */}
+              <div className="flex items-center justify-center gap-2 mt-6 p-3 bg-green-50 rounded-lg border border-green-200">
+                <Shield className="w-4 h-4 text-green-600" />
+                <span className="text-sm text-green-700 font-medium">Your transaction is secure</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="text-center mt-6">
+            <p className="text-xs text-gray-500">
+              © 2024 SecurePay. All rights reserved.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -244,14 +382,14 @@ function PaymentGateway() {
 
             {/* Pay Button */}
             <button
-              onClick={processPayment}
+              onClick={processCardPayment}
               disabled={loading}
               className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-lg mt-6 flex items-center justify-center gap-3 shadow-lg transition-all duration-200"
             >
               {loading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Processing Payment...
+                  Processing...
                 </>
               ) : (
                 <>
