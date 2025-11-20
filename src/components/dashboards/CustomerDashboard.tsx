@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchProducts, fetchProductsByCategory, Product } from '@/services/productService';
 import ProductCard from '@/components/products/ProductCard';
-import FeedbackForm from '@/components/FeedbackForm';
 import { supabase } from '@/utils/supabaseClient';
 
 const CustomerDashboard: React.FC = () => {
@@ -10,9 +9,7 @@ const CustomerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [cart, setCart] = useState<(Product & { cartQuantity: number })[]>([]);
 
   const categories = [
     { name: 'All', icon: '🛍️', color: 'from-purple-500 to-pink-500' },
@@ -23,15 +20,6 @@ const CustomerDashboard: React.FC = () => {
     { name: 'Books', icon: '📚', color: 'from-indigo-500 to-purple-500' },
     { name: 'Other', icon: '✨', color: 'from-gray-500 to-slate-500' }
   ];
-
-  // Get current user
-  useEffect(() => {
-    async function getUser() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) setUserId(user.id);
-    }
-    getUser();
-  }, []);
 
   useEffect(() => {
     loadProducts();
@@ -52,23 +40,28 @@ const CustomerDashboard: React.FC = () => {
     }
   };
 
-  const handleProductClick = (product: Product) => {
-    // Only open modal if product has an id
-    if (product.id) {
-      setSelectedProduct(product);
-      setShowFeedbackModal(true);
-    }
-  };
-
-  const closeFeedbackModal = () => {
-    setShowFeedbackModal(false);
-    setSelectedProduct(null);
+  const handleAddToCart = (product: Product) => {
+    setCart(prev => {
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) {
+        return prev.map(item => 
+          item.id === product.id 
+            ? { ...item, cartQuantity: item.cartQuantity + 1 }
+            : item
+        );
+      }
+      return [...prev, { ...product, cartQuantity: 1 }];
+    });
+    // You can add a toast notification here
+    console.log(`Added ${product.name} to cart`);
   };
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     product.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const cartItemCount = cart.reduce((sum, item) => sum + item.cartQuantity, 0);
 
   if (loading) {
     return (
@@ -86,12 +79,17 @@ const CustomerDashboard: React.FC = () => {
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 text-white py-12 px-8 shadow-2xl">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-5xl font-bold mb-4 animate-fade-in">
-            🛍️ Discover Amazing Products
-          </h1>
-          <p className="text-xl opacity-90 mb-6">
-            Explore our curated collection of quality items
-          </p>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-5xl font-bold animate-fade-in">🛍️ Discover Amazing Products</h1>
+            {/* Cart indicator */}
+            {cartItemCount > 0 && (
+              <div className="bg-white/20 px-4 py-2 rounded-full flex items-center gap-2">
+                <span className="text-2xl">🛒</span>
+                <span className="font-semibold">{cartItemCount} items</span>
+              </div>
+            )}
+          </div>
+          <p className="text-xl opacity-90 mb-6">Explore our curated collection of quality items</p>
           
           {/* Search Bar */}
           <div className="relative max-w-2xl">
@@ -102,9 +100,7 @@ const CustomerDashboard: React.FC = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full px-6 py-4 rounded-full text-gray-800 text-lg shadow-lg focus:outline-none focus:ring-4 focus:ring-white/50 transition-all"
             />
-            <span className="absolute right-6 top-1/2 transform -translate-y-1/2 text-2xl">
-              🔍
-            </span>
+            <span className="absolute right-6 top-1/2 transform -translate-y-1/2 text-2xl">🔍</span>
           </div>
         </div>
       </div>
@@ -164,21 +160,10 @@ const CustomerDashboard: React.FC = () => {
                 className="animate-slide-up"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <div onClick={() => handleProductClick(product)} className="cursor-pointer">
-                  <ProductCard
-                    product={product}
-                    isRetailer={false}
-                  />
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleProductClick(product);
-                  }}
-                  className="w-full mt-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 rounded-lg font-semibold hover:shadow-lg transition-all transform hover:scale-105"
-                >
-                  ⭐ Leave Feedback
-                </button>
+                <ProductCard
+                  product={product}
+                  onAddToCart={handleAddToCart}
+                />
               </div>
             ))}
           </div>
@@ -206,71 +191,6 @@ const CustomerDashboard: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* Feedback Modal */}
-      {showFeedbackModal && selectedProduct && selectedProduct.id && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in"
-          onClick={closeFeedbackModal}
-        >
-          <div 
-            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-slide-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6 rounded-t-2xl z-10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-2xl font-bold">{selectedProduct.name}</h3>
-                  <p className="text-white/80 mt-1">Share your experience with this product</p>
-                </div>
-                <button
-                  onClick={closeFeedbackModal}
-                  className="text-white hover:bg-white/20 rounded-full p-2 transition-all"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6">
-              {userId ? (
-                <FeedbackForm
-                  productId={selectedProduct.id}
-                  userId={userId}
-                />
-              ) : (
-                <div className="text-center py-8">
-                  <div className="text-6xl mb-4">🔒</div>
-                  <p className="text-xl font-semibold text-gray-800 mb-2">Login Required</p>
-                  <p className="text-gray-600 mb-4">
-                    Please log in to submit feedback for this product
-                  </p>
-                  <button
-                    onClick={() => window.location.href = '/login'}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all"
-                  >
-                    Go to Login
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
-              <button
-                onClick={closeFeedbackModal}
-                className="w-full px-4 py-3 bg-gray-200 hover:bg-gray-300 rounded-lg font-semibold transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Add custom animations */}
       <style>{`

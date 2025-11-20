@@ -2,7 +2,7 @@ import { useState, FormEvent, ChangeEvent } from 'react';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
-import { MapPin, Phone, CreditCard, Truck } from 'lucide-react';
+import { MapPin, Phone, CreditCard, Truck, Calendar, Check } from 'lucide-react';
 
 interface FormData {
   phone: string;
@@ -17,12 +17,13 @@ function Checkout() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
-  
+  const [calendarLinked, setCalendarLinked] = useState(false);
+ 
   const [formData, setFormData] = useState<FormData>({
     phone: '',
     address: '',
     paymentMethod: 'online',
-    latitude: 17.385044, // Default to Hyderabad
+    latitude: 17.385044,
     longitude: 78.486671,
   });
 
@@ -31,7 +32,6 @@ function Checkout() {
     setFormData({ ...formData, [name]: value });
   };
 
-  // Get user's current location
   const getCurrentLocation = () => {
     setGettingLocation(true);
     if (navigator.geolocation) {
@@ -57,30 +57,33 @@ function Checkout() {
     }
   };
 
+  const handleGoogleCalendarLink = () => {
+    // Simulate linking to Google Calendar
+    setCalendarLinked(true);
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+     
       if (!user) {
         alert('Please login to place order');
         navigate('/login');
         return;
       }
 
-      const totalPrice = getCartTotal() + 40; // Including delivery fee
-      const orderNumber = `ORD-${Date.now()}`; // Generate unique order number
+      const totalPrice = getCartTotal() + 40;
+      const orderNumber = `ORD-${Date.now()}`;
 
-      // Get user details for order
       const { data: userData } = await supabase
         .from('users')
         .select('name')
         .eq('auth_id', user.id)
         .single();
 
-      // Calculate estimated delivery time (30-45 mins from now)
       const estimatedTime = new Date();
       estimatedTime.setMinutes(estimatedTime.getMinutes() + 35);
       const estimatedDelivery = estimatedTime.toLocaleTimeString('en-IN', {
@@ -88,7 +91,6 @@ function Checkout() {
         minute: '2-digit'
       });
 
-      // Create order with delivery fields
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -112,7 +114,6 @@ function Checkout() {
 
       if (orderError) throw orderError;
 
-      // Insert order items
       const orderItems = cartItems.map(item => ({
         order_id: order.id,
         product_id: item.id,
@@ -127,7 +128,6 @@ function Checkout() {
 
       if (itemsError) throw itemsError;
 
-      // Update product stock
       for (const item of cartItems) {
         const { data: product } = await supabase
           .from('products')
@@ -143,16 +143,14 @@ function Checkout() {
         }
       }
 
-      // Handle payment
       if (formData.paymentMethod === 'online') {
         redirectToMockPayment(order.id, totalPrice);
       } else {
-        // For offline payment, mark order as confirmed
         await supabase
           .from('orders')
-          .update({ 
+          .update({
             delivery_status: 'confirmed',
-            status: 'confirmed' 
+            status: 'confirmed'
           })
           .eq('id', order.id);
 
@@ -200,10 +198,8 @@ function Checkout() {
         <h1 className="text-3xl font-bold mb-8 text-gray-800">Checkout</h1>
 
         <div className="grid md:grid-cols-3 gap-6">
-          {/* Order Form */}
           <div className="md:col-span-2">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Phone Number */}
               <div className="bg-white rounded-lg shadow-md p-6">
                 <label className="block font-semibold mb-3 text-gray-800 flex items-center gap-2">
                   <Phone className="w-5 h-5 text-blue-600" />
@@ -220,7 +216,6 @@ function Checkout() {
                 />
               </div>
 
-              {/* Delivery Address */}
               <div className="bg-white rounded-lg shadow-md p-6">
                 <label className="block font-semibold mb-3 text-gray-800 flex items-center gap-2">
                   <MapPin className="w-5 h-5 text-blue-600" />
@@ -235,7 +230,7 @@ function Checkout() {
                   className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-3"
                   placeholder="Enter your full address with landmark"
                 />
-                
+               
                 <button
                   type="button"
                   onClick={getCurrentLocation}
@@ -245,7 +240,7 @@ function Checkout() {
                   <MapPin className="w-4 h-4" />
                   {gettingLocation ? 'Getting Location...' : 'Use Current Location'}
                 </button>
-                
+               
                 {formData.latitude && formData.longitude && (
                   <p className="text-xs text-gray-500 mt-2">
                     📍 Location: {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}
@@ -253,7 +248,36 @@ function Checkout() {
                 )}
               </div>
 
-              {/* Payment Method */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <label className="block font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-blue-600" />
+                  Delivery Reminder
+                </label>
+               
+                {!calendarLinked ? (
+                  <button
+                    type="button"
+                    onClick={handleGoogleCalendarLink}
+                    className="w-full bg-white border-2 border-gray-300 text-gray-700 py-3 px-4 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all font-semibold flex items-center justify-center gap-2"
+                  >
+                    <Calendar className="w-5 h-5" />
+                    Link Google Calendar
+                  </button>
+                ) : (
+                  <div className="bg-green-50 border-2 border-green-500 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="bg-green-500 rounded-full p-1">
+                        <Check className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="font-semibold text-green-800">Google Calendar Linked</span>
+                    </div>
+                    <p className="text-sm text-green-700">
+                      ✅ Reminder will be sent via Google Calendar
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div className="bg-white rounded-lg shadow-md p-6">
                 <label className="block font-semibold mb-4 text-gray-800 flex items-center gap-2">
                   <CreditCard className="w-5 h-5 text-blue-600" />
@@ -274,7 +298,7 @@ function Checkout() {
                       <p className="text-sm text-gray-500">Pay via Mock Payment Gateway</p>
                     </div>
                   </label>
-                  
+                 
                   <label className="flex items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors">
                     <input
                       type="radio"
@@ -292,7 +316,6 @@ function Checkout() {
                 </div>
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading}
@@ -303,11 +326,10 @@ function Checkout() {
             </form>
           </div>
 
-          {/* Order Summary Sidebar */}
           <div className="md:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-6 sticky top-6">
               <h2 className="font-bold text-xl mb-4 text-gray-800">Order Summary</h2>
-              
+             
               <div className="space-y-3 mb-4">
                 {cartItems.map(item => (
                   <div key={item.id} className="flex justify-between text-sm border-b pb-2">

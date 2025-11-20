@@ -1,7 +1,3 @@
-// ============================================
-// PART 1: Fixed productService.ts
-// ============================================
-
 // src/services/productService.ts
 import { supabase } from '@/utils/supabaseClient';
 
@@ -21,8 +17,31 @@ export interface Product {
   updated_at?: string;
   cost_price?: number;
   retailer_price?: number;
-  availability_date?: string; // As per project requirements
-  region?: string; // For region-specific products
+  availability_date?: string;
+  region?: string;
+}
+
+// ============================================
+// NEW: Review Interfaces
+// ============================================
+// In your productService.ts file, update the ProductReview interface:
+export interface ProductReview {
+  id: string;
+  product_id: string;
+  user_id: string;
+  user_name: string;
+  rating: number;
+  review_text: string;
+  created_at: string;
+  order_id?: string;
+}
+
+interface AddReviewData {
+  order_id: string;
+  product_id: string;
+  customer_id: string;
+  rating: number;
+  review_text?: string;
 }
 
 // Get current authenticated user
@@ -466,6 +485,52 @@ export const searchProducts = async (filters: {
     return data || [];
   } catch (error) {
     console.error('Error searching products:', error);
+    throw error;
+  }
+};
+
+// ============================================
+// NEW: Review Functions
+// ============================================
+
+// Fetch all reviews for a specific product
+export const fetchProductReviews = async (productId: string): Promise<ProductReview[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('*')
+      .eq('product_id', productId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching reviews:', error);
+      throw error;
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching product reviews:', error);
+    throw error;
+  }
+};
+
+// Add a new review
+export const addReview = async (reviewData: AddReviewData): Promise<ProductReview> => {
+  try {
+    const { data, error } = await supabase
+      .from('reviews')
+      .insert([reviewData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding review:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error submitting review:', error);
     throw error;
   }
 };
