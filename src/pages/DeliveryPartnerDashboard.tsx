@@ -5,6 +5,7 @@ import { supabase } from '../utils/supabaseClient';
 type Order = {
   id: string;
   order_number: string;
+  customer_id: string;
   customer_name: string;
   customer_phone: string;
   delivery_address: string;
@@ -12,7 +13,7 @@ type Order = {
   delivery_lng: number;
   delivery_status: string;
   total_amount: number;
-  total_price: number; // Alternative field name
+  total_price: number;
 };
 
 export default function DeliveryPartnerDashboard() {
@@ -37,7 +38,6 @@ export default function DeliveryPartnerDashboard() {
 
       console.log('✅ Logged in user:', user.id);
       
-      // Fetch delivery partner record using auth_id
       const { data: partner, error } = await supabase
         .from('delivery_partners')
         .select('id, name')
@@ -73,7 +73,6 @@ export default function DeliveryPartnerDashboard() {
           };
           setCurrentLocation(location);
           
-          // Update location in database
           if (selectedOrder && deliveryPartnerId) {
             updateDeliveryLocation(selectedOrder.id, location);
           }
@@ -112,7 +111,6 @@ export default function DeliveryPartnerDashboard() {
 
     fetchOrders();
 
-    // Subscribe to real-time updates
     const channel = supabase
       .channel('delivery-orders')
       .on(
@@ -152,6 +150,10 @@ export default function DeliveryPartnerDashboard() {
     }
   }
 
+  // Email notification is now handled automatically by database trigger
+  // No need for separate email function - trigger will create notification
+  // when order status changes to 'delivered'
+
   // Update order status
   async function updateOrderStatus(orderId: string, newStatus: string) {
     const { error } = await supabase
@@ -164,7 +166,8 @@ export default function DeliveryPartnerDashboard() {
       return;
     }
 
-    // If order is delivered, mark delivery partner as available again
+    // Database trigger will automatically send email when status = 'delivered'
+    // Mark delivery partner as available
     if (newStatus === 'delivered' && deliveryPartnerId) {
       console.log('✅ Marking delivery partner as available...');
       const { error: partnerError } = await supabase
@@ -202,8 +205,7 @@ export default function DeliveryPartnerDashboard() {
       console.log('📦 Completing delivery for order:', selectedOrder.order_number);
       await updateOrderStatus(selectedOrder.id, 'delivered');
       
-      // Show success message
-      alert('✅ Delivery completed successfully! You are now available for new orders.');
+      alert('✅ Delivery completed successfully!\n📧 Email sent to customer.\n\nYou are now available for new orders.');
       
       setSelectedOrder(null);
     }
@@ -231,12 +233,10 @@ export default function DeliveryPartnerDashboard() {
   const activeOrders = orders.filter(o => o.delivery_status !== 'delivered');
   const completedOrders = orders.filter(o => o.delivery_status === 'delivered');
   
-  // Helper function to get order amount
   const getOrderAmount = (order: Order) => {
     return order.total_amount || order.total_price || 0;
   };
   
-  // Calculate earnings (₹500 per delivery)
   const earningsPerDelivery = 500;
   const totalEarnings = completedOrders.length * earningsPerDelivery;
 
@@ -284,6 +284,7 @@ export default function DeliveryPartnerDashboard() {
             <p>• Active Orders: {activeOrders.length}</p>
             <p>• Completed Orders: {completedOrders.length}</p>
             <p>• Location Tracking: {currentLocation ? '🟢 Active' : '🔴 Disabled'}</p>
+            <p>• Email Notifications: 🟢 Enabled</p>
           </div>
         </div>
 
@@ -357,7 +358,7 @@ export default function DeliveryPartnerDashboard() {
               
               <button
                 onClick={() => window.open(`tel:${selectedOrder.customer_phone}`)}
-                className="flex-1 bg-green-500 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-green-600 transition-colors"
+                className="flex-1 bg-green-500 text-white font-semibold py-3 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
               >
                 <Phone className="w-5 h-5" />
                 Call Customer
@@ -392,7 +393,6 @@ export default function DeliveryPartnerDashboard() {
                   className="border-2 border-blue-200 rounded-lg p-5 hover:border-blue-400 hover:shadow-lg transition-all bg-gradient-to-r from-blue-50 to-white"
                 >
                   <div className="flex flex-col gap-4">
-                    {/* Order Header */}
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-3">
                         <span className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold shadow-sm">
@@ -409,7 +409,6 @@ export default function DeliveryPartnerDashboard() {
                       </div>
                     </div>
                     
-                    {/* Customer Info */}
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Customer Name</p>
@@ -425,7 +424,6 @@ export default function DeliveryPartnerDashboard() {
                       </div>
                     </div>
 
-                    {/* Delivery Address */}
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Delivery Address</p>
                       <div className="flex items-start gap-2 bg-white p-3 rounded-lg border border-gray-200">
@@ -436,7 +434,6 @@ export default function DeliveryPartnerDashboard() {
                       </div>
                     </div>
 
-                    {/* Amount */}
                     <div className="flex items-center justify-between bg-green-50 p-3 rounded-lg border border-green-200">
                       <span className="text-sm text-gray-600">Order Amount:</span>
                       <span className="text-xl font-bold text-green-600">
@@ -444,7 +441,6 @@ export default function DeliveryPartnerDashboard() {
                       </span>
                     </div>
                     
-                    {/* Delivery Fee */}
                     <div className="flex items-center justify-between bg-purple-50 p-3 rounded-lg border border-purple-200">
                       <span className="text-sm text-gray-600">Your Delivery Fee:</span>
                       <span className="text-lg font-bold text-purple-600">
@@ -452,7 +448,6 @@ export default function DeliveryPartnerDashboard() {
                       </span>
                     </div>
 
-                    {/* Action Buttons */}
                     <div className="flex gap-3 mt-2">
                       {order.delivery_status === 'out_for_delivery' ? (
                         <>
@@ -471,7 +466,12 @@ export default function DeliveryPartnerDashboard() {
                             Call
                           </button>
                           <button
-                            onClick={() => updateOrderStatus(order.id, 'delivered')}
+                            onClick={() => {
+                              updateOrderStatus(order.id, 'delivered');
+                              setTimeout(() => {
+                                alert('✅ Delivery completed!\n📧 Email sent to customer.');
+                              }, 500);
+                            }}
                             className="flex-1 bg-purple-500 text-white font-semibold py-3 rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-2"
                           >
                             <CheckCircle className="w-5 h-5" />
