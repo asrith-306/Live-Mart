@@ -14,6 +14,9 @@ import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
 import Orders from "./pages/Orders";
 import { useCart } from "./context/CartContext";
+import OrderTracking from "./pages/OrderTracking";
+import DeliveryPartnerDashboard from './pages/DeliveryPartnerDashboard';
+import OrderManagement from "./components/order-management";
 import './index.css'
 
 type Product = {
@@ -23,7 +26,7 @@ type Product = {
   category?: string;
 };
 
-type UserRole = "customer" | "retailer" | "wholesaler" | null;
+type UserRole = "customer" | "retailer" | "wholesaler" | "delivery_partner" | null;
 
 // Protected Route Component
 function ProtectedRoute({ 
@@ -45,6 +48,8 @@ function ProtectedRoute({
       return <Navigate to="/customer" replace />;
     } else if (userRole === "retailer") {
       return <Navigate to="/retailer" replace />;
+    } else if (userRole === "delivery_partner") {
+      return <Navigate to="/delivery-dashboard" replace />;
     } else if (userRole === "wholesaler") {
       return <Navigate to="/wholesaler" replace />;
     }
@@ -89,7 +94,7 @@ function Navbar({
               <>
                 <button
                   onClick={() => navigate('/customer')}
-                  className="px-4 py-2 rounded-lg bg-white text-blue-600 shadow-md font-semibold"
+                  className="px-4 py-2 rounded-lg bg-white text-blue-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
                 >
                   My Dashboard
                 </button>
@@ -116,16 +121,25 @@ function Navbar({
             {userRole === "retailer" && (
               <button
                 onClick={() => navigate('/retailer')}
-                className="px-4 py-2 rounded-lg bg-white text-purple-600 shadow-md font-semibold"
+                className="px-4 py-2 rounded-lg bg-white text-purple-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
               >
                 Retailer Dashboard
+              </button>
+            )}
+
+            {userRole === "delivery_partner" && (
+              <button
+                onClick={() => navigate('/delivery-dashboard')}
+                className="px-4 py-2 rounded-lg bg-white text-green-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
+              >
+                Delivery Dashboard
               </button>
             )}
 
             {userRole === "wholesaler" && (
               <button
                 onClick={() => navigate('/wholesaler')}
-                className="px-4 py-2 rounded-lg bg-white text-green-600 shadow-md font-semibold"
+                className="px-4 py-2 rounded-lg bg-white text-green-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
               >
                 Wholesaler Dashboard
               </button>
@@ -268,6 +282,36 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
                 <CustomerDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* 📦 Order Tracking - Only for customers */}
+          <Route 
+            path="/track-order/:orderId" 
+            element={
+              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
+                <OrderTracking />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* 🚚 Delivery Partner Dashboard - Only for delivery partners */}
+          <Route 
+            path="/delivery-dashboard" 
+            element={
+              <ProtectedRoute allowedRoles={["delivery_partner"]} userRole={userRole}>
+                <DeliveryPartnerDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* 📦 Order Management - For retailers/wholesalers */}
+          <Route 
+            path="/order-management" 
+            element={
+              <ProtectedRoute allowedRoles={["retailer", "wholesaler"]} userRole={userRole}>
+                <OrderManagement />
               </ProtectedRoute>
             } 
           />
