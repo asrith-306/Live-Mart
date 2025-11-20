@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "./utils/supabaseClient";
 import Signup from "./Signup";
 import Login from "./login";
+import SearchBar from "./components/SearchBar";
+import ProductReviews from "./components/products/ProductReviews";
 import HomePage from "./components/HomePage";
 import RetailerDashboard from "./components/dashboards/RetailerDashboard";
 import CustomerDashboard from "./components/dashboards/CustomerDashboard";
@@ -15,8 +17,15 @@ import { useCart } from "./context/CartContext";
 import OrderTracking from "./pages/OrderTracking";
 import DeliveryPartnerDashboard from './pages/DeliveryPartnerDashboard';
 import OrderManagement from "./components/order-management";
+import './index.css'
 import AuthCallback from "./components/AuthCallback";
-import './index.css';
+
+type Product = {
+  id: string;
+  name: string;
+  price?: number;
+  category?: string;
+};
 
 type UserRole = "customer" | "retailer" | "wholesaler" | "delivery_partner" | null;
 
@@ -50,7 +59,7 @@ function ProtectedRoute({
   return <>{children}</>;
 }
 
-// Enhanced Navbar
+// Enhanced Navbar - Fixed version
 function Navbar({ 
   isLoggedIn, 
   onLogout, 
@@ -78,84 +87,105 @@ function Navbar({
           🛒 Live MART
         </button>
 
-        {/* Only show these when logged in */}
-        {isLoggedIn && (
-          <div className="flex gap-4 items-center">
-            {/* Show role-specific buttons */}
-            {userRole === "customer" && (
-              <>
+        <div className="flex gap-4 items-center">
+          {/* Only show logout and dashboard buttons when ACTUALLY logged in AND has a role */}
+          {isLoggedIn && userRole ? (
+            <>
+              {/* Show role-specific buttons */}
+              {userRole === "customer" && (
+                <>
+                  <button
+                    onClick={() => navigate('/customer')}
+                    className="px-4 py-2 rounded-lg bg-white text-blue-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
+                  >
+                    My Dashboard
+                  </button>
+                  <button
+                    onClick={() => navigate('/orders')}
+                    className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold"
+                  >
+                    My Orders
+                  </button>
+                  <button
+                    onClick={() => navigate('/cart')}
+                    className="relative px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-300 transition-all font-semibold"
+                  >
+                    🛒 Cart
+                    {getCartCount() > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
+                        {getCartCount()}
+                      </span>
+                    )}
+                  </button>
+                </>
+              )}
+
+              {userRole === "retailer" && (
                 <button
-                  onClick={() => navigate('/customer')}
-                  className="px-4 py-2 rounded-lg bg-white text-blue-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
+                  onClick={() => navigate('/retailer')}
+                  className="px-4 py-2 rounded-lg bg-white text-purple-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
                 >
-                  Shop Products
+                  Retailer Dashboard
                 </button>
+              )}
+
+              {userRole === "delivery_partner" && (
                 <button
-                  onClick={() => navigate('/orders')}
-                  className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold"
+                  onClick={() => navigate('/delivery-dashboard')}
+                  className="px-4 py-2 rounded-lg bg-white text-green-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
                 >
-                  My Orders
+                  Delivery Dashboard
                 </button>
+              )}
+
+              {userRole === "wholesaler" && (
                 <button
-                  onClick={() => navigate('/cart')}
-                  className="relative px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-300 transition-all font-semibold"
+                  onClick={() => navigate('/wholesaler')}
+                  className="px-4 py-2 rounded-lg bg-white text-green-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
                 >
-                  🛒 Cart
-                  {getCartCount() > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
-                      {getCartCount()}
-                    </span>
-                  )}
+                  Wholesaler Dashboard
                 </button>
-              </>
-            )}
+              )}
 
-            {userRole === "retailer" && (
               <button
-                onClick={() => navigate('/retailer')}
-                className="px-4 py-2 rounded-lg bg-white text-purple-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
+                onClick={handleLogoutClick}
+                className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all font-semibold"
               >
-                Retailer Dashboard
+                Logout
               </button>
-            )}
-
-            {userRole === "delivery_partner" && (
+            </>
+          ) : (
+            /* Show login/signup buttons when NOT logged in */
+            <>
               <button
-                onClick={() => navigate('/delivery-dashboard')}
-                className="px-4 py-2 rounded-lg bg-white text-green-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
+                onClick={() => navigate('/login')}
+                className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold"
               >
-                Delivery Dashboard
+                Sign In
               </button>
-            )}
-
-            {userRole === "wholesaler" && (
               <button
-                onClick={() => navigate('/wholesaler')}
-                className="px-4 py-2 rounded-lg bg-white text-green-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
+                onClick={() => navigate('/signup')}
+                className="px-4 py-2 rounded-lg bg-white text-blue-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
               >
-                Wholesaler Dashboard
+                Sign Up
               </button>
-            )}
-
-            <button
-              onClick={handleLogoutClick}
-              className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all font-semibold"
-            >
-              Logout
-            </button>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
     </nav>
   );
 }
 
 function App() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>(null);
+  const [userHasDeliveredOrder, setUserHasDeliveredOrder] = useState(false);
 
-  // Get the logged-in user from Supabase Auth
+  // 🧠 Get the logged-in user from Supabase Auth
   useEffect(() => {
     async function getUser() {
       const {
@@ -185,7 +215,7 @@ function App() {
 
     getUser();
 
-    // Listen for login/logout events
+    // Also listen for login/logout events
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         setUserId(session.user.id);
@@ -212,6 +242,53 @@ function App() {
       listener.subscription.unsubscribe();
     };
   }, []);
+
+  // 🛍 Fetch all products
+  useEffect(() => {
+    async function fetchProducts() {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name, price, category")
+        .order("name", { ascending: true });
+
+      if (error) console.error("Error fetching products:", error.message);
+      else setProducts(data || []);
+    }
+
+    fetchProducts();
+  }, []);
+
+  // Check if user has delivered orders for the selected product
+  useEffect(() => {
+    async function checkDeliveredOrders() {
+      if (!selectedProduct || !userId) {
+        setUserHasDeliveredOrder(false);
+        return;
+      }
+
+      try {
+        const { data: orders } = await supabase
+          .from('orders')
+          .select(`id, status, delivery_status, order_items (product_id)`)
+          .eq('customer_id', userId);
+
+        const deliveredOrders = orders?.filter(order => 
+          order.status === 'delivered' || order.delivery_status === 'delivered'
+        );
+
+        const hasProductDelivered = deliveredOrders?.some(order => 
+          order.order_items?.some((item: any) => item.product_id === selectedProduct.id)
+        );
+
+        setUserHasDeliveredOrder(!!hasProductDelivered);
+      } catch (error) {
+        console.error('Error checking delivered orders:', error);
+        setUserHasDeliveredOrder(false);
+      }
+    }
+
+    checkDeliveredOrders();
+  }, [selectedProduct, userId]);
 
   const handleLogin = async (id: string) => {
     setUserId(id);
@@ -251,9 +328,6 @@ function App() {
           {/* 🔐 Login Page */}
           <Route path="/login" element={<Login onLogin={handleLogin} userRole={userRole} />} />
           
-          {/* 🔄 Auth Callback */}
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          
           {/* 🛒 Customer Dashboard - Only for customers */}
           <Route 
             path="/customer" 
@@ -263,6 +337,7 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           
           {/* 📦 Order Tracking - Only for customers */}
           <Route 
@@ -346,6 +421,97 @@ function App() {
                 <Orders />
               </ProtectedRoute>
             } 
+          />
+          
+          {/* 🛒 Original Dashboard with Product Reviews */}
+          <Route
+            path="/dashboard"
+            element={
+              <div
+                style={{
+                  padding: "30px",
+                  maxWidth: "800px",
+                  margin: "0 auto",
+                }}
+              >
+                <h1 style={{ fontWeight: "bold", marginBottom: "1rem" }}>
+                  🛍️ Live-Mart Dashboard
+                </h1>
+
+                <SearchBar />
+
+                <h2 style={{ marginTop: "2rem", marginBottom: "0.5rem" }}>
+                  All Products
+                </h2>
+
+                <ul style={{ listStyle: "none", padding: 0 }}>
+                  {products.length > 0 ? (
+                    products.map((p) => (
+                      <li
+                        key={p.id}
+                        onClick={() => setSelectedProduct(p)}
+                        style={{
+                          borderBottom: "1px solid #ddd",
+                          padding: "8px 0",
+                          cursor: "pointer",
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>
+                          {p.name} {p.category ? `(${p.category})` : ""}
+                        </span>
+                        {p.price && <span>₹{p.price}</span>}
+                      </li>
+                    ))
+                  ) : (
+                    <p>No products found</p>
+                  )}
+                </ul>
+
+                {selectedProduct && (
+                  <div
+                    style={{
+                      marginTop: "2rem",
+                      padding: "1rem",
+                      border: "1px solid #ddd",
+                      borderRadius: "8px",
+                    }}
+                  >
+                    {userId ? (
+                      <ProductReviews
+                        productId={selectedProduct.id}
+                        productName={selectedProduct.name}
+                        onClose={() => setSelectedProduct(null)}
+                        userHasDeliveredOrder={userHasDeliveredOrder}
+                      />
+                    ) : (
+                      <>
+                        <h3 style={{ fontWeight: "bold", marginBottom: "0.5rem" }}>
+                          Reviews for: {selectedProduct.name}
+                        </h3>
+                        <p style={{ color: "red" }}>
+                          ⚠️ Please log in to view and submit reviews.
+                        </p>
+                        <button
+                          onClick={() => setSelectedProduct(null)}
+                          style={{
+                            marginTop: "0.5rem",
+                            backgroundColor: "#ccc",
+                            padding: "6px 12px",
+                            borderRadius: "6px",
+                            border: "none",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Close
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            }
           />
         </Routes>
       </div>

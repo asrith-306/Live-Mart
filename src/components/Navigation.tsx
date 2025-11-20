@@ -7,7 +7,9 @@ import {
   X,
   Home,
   Package,
-  LogOut
+  LogOut,
+  LogIn,
+  UserPlus
 } from "lucide-react";
 
 interface NavigationProps {
@@ -25,6 +27,7 @@ const Navigation = ({
   const handleLogout = () => {
     onLogout();
     navigate("/");
+    setIsMobileMenuOpen(false);
   };
 
   return (
@@ -52,12 +55,15 @@ const Navigation = ({
             >
               Home
             </Link>
-            <Link 
-              to="/dashboard" 
-              className="text-white hover:text-white/80 transition-colors font-medium"
-            >
-              Products
-            </Link>
+            
+            {isLoggedIn && (
+              <Link 
+                to="/dashboard" 
+                className="text-white hover:text-white/80 transition-colors font-medium"
+              >
+                Products
+              </Link>
+            )}
 
             {isLoggedIn ? (
               <Button
@@ -70,16 +76,20 @@ const Navigation = ({
               </Button>
             ) : (
               <>
-                <Link 
-                  to="/login" 
-                  className="text-white hover:text-white/80 transition-colors font-medium"
-                >
-                  Login
+                <Link to="/login">
+                  <Button
+                    variant="outline"
+                    className="border-2 border-white text-white hover:bg-white/10"
+                  >
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Login
+                  </Button>
                 </Link>
                 <Link to="/signup">
                   <Button
                     className="bg-yellow-400 text-gray-900 hover:bg-yellow-500 font-bold"
                   >
+                    <UserPlus className="h-4 w-4 mr-2" />
                     Sign Up
                   </Button>
                 </Link>
@@ -114,22 +124,21 @@ const Navigation = ({
               <span className="font-medium">Home</span>
             </Link>
 
-            <Link
-              to="/dashboard"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors text-left text-white"
-            >
-              <Package className="h-5 w-5" />
-              <span className="font-medium">Products</span>
-            </Link>
+            {isLoggedIn && (
+              <Link
+                to="/dashboard"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors text-left text-white"
+              >
+                <Package className="h-5 w-5" />
+                <span className="font-medium">Products</span>
+              </Link>
+            )}
 
             {isLoggedIn ? (
               <div className="pt-2 border-t border-white/10">
                 <Button
-                  onClick={() => {
-                    handleLogout();
-                    setIsMobileMenuOpen(false);
-                  }}
+                  onClick={handleLogout}
                   variant="destructive"
                   className="w-full justify-start gap-3 bg-red-500 hover:bg-red-600"
                 >
@@ -142,15 +151,17 @@ const Navigation = ({
                 <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
                   <Button
                     variant="outline"
-                    className="w-full border-2 border-white text-white hover:bg-white/10"
+                    className="w-full justify-start gap-3 border-2 border-white text-white hover:bg-white/10"
                   >
+                    <LogIn className="h-5 w-5" />
                     Login
                   </Button>
                 </Link>
                 <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
                   <Button
-                    className="w-full bg-yellow-400 text-gray-900 hover:bg-yellow-500 font-bold"
+                    className="w-full justify-start gap-3 bg-yellow-400 text-gray-900 hover:bg-yellow-500 font-bold"
                   >
+                    <UserPlus className="h-5 w-5" />
                     Sign Up
                   </Button>
                 </Link>
