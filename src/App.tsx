@@ -3,8 +3,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "./utils/supabaseClient";
 import Signup from "./Signup";
 import Login from "./login";
-import SearchBar from "./components/SearchBar";
-import FeedbackForm from "./components/FeedbackForm";
 import HomePage from "./components/HomePage";
 import RetailerDashboard from "./components/dashboards/RetailerDashboard";
 import CustomerDashboard from "./components/dashboards/CustomerDashboard";
@@ -17,15 +15,8 @@ import { useCart } from "./context/CartContext";
 import OrderTracking from "./pages/OrderTracking";
 import DeliveryPartnerDashboard from './pages/DeliveryPartnerDashboard';
 import OrderManagement from "./components/order-management";
-import './index.css'
 import AuthCallback from "./components/AuthCallback";
-
-type Product = {
-  id: string;
-  name: string;
-  price?: number;
-  category?: string;
-};
+import './index.css';
 
 type UserRole = "customer" | "retailer" | "wholesaler" | "delivery_partner" | null;
 
@@ -97,7 +88,7 @@ function Navbar({
                   onClick={() => navigate('/customer')}
                   className="px-4 py-2 rounded-lg bg-white text-blue-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
                 >
-                  My Dashboard
+                  Shop Products
                 </button>
                 <button
                   onClick={() => navigate('/orders')}
@@ -160,13 +151,11 @@ function Navbar({
 }
 
 function App() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>(null);
 
-  // 🧠 Get the logged-in user from Supabase Auth
+  // Get the logged-in user from Supabase Auth
   useEffect(() => {
     async function getUser() {
       const {
@@ -196,7 +185,7 @@ function App() {
 
     getUser();
 
-    // Also listen for login/logout events
+    // Listen for login/logout events
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         setUserId(session.user.id);
@@ -222,21 +211,6 @@ function App() {
     return () => {
       listener.subscription.unsubscribe();
     };
-  }, []);
-
-  // 🛍 Fetch all products
-  useEffect(() => {
-    async function fetchProducts() {
-      const { data, error } = await supabase
-        .from("products")
-        .select("id, name, price, category")
-        .order("name", { ascending: true });
-
-      if (error) console.error("Error fetching products:", error.message);
-      else setProducts(data || []);
-    }
-
-    fetchProducts();
   }, []);
 
   const handleLogin = async (id: string) => {
@@ -277,6 +251,9 @@ function App() {
           {/* 🔐 Login Page */}
           <Route path="/login" element={<Login onLogin={handleLogin} userRole={userRole} />} />
           
+          {/* 🔄 Auth Callback */}
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          
           {/* 🛒 Customer Dashboard - Only for customers */}
           <Route 
             path="/customer" 
@@ -286,7 +263,6 @@ function App() {
               </ProtectedRoute>
             } 
           />
-          <Route path="/auth/callback" element={<AuthCallback />} />
           
           {/* 📦 Order Tracking - Only for customers */}
           <Route 
@@ -370,95 +346,6 @@ function App() {
                 <Orders />
               </ProtectedRoute>
             } 
-          />
-          
-          {/* 🛒 Original Dashboard with Feedback */}
-          <Route
-            path="/dashboard"
-            element={
-              <div
-                style={{
-                  padding: "30px",
-                  maxWidth: "800px",
-                  margin: "0 auto",
-                }}
-              >
-                <h1 style={{ fontWeight: "bold", marginBottom: "1rem" }}>
-                  🛍️ Live-Mart Dashboard
-                </h1>
-
-                <SearchBar />
-
-                <h2 style={{ marginTop: "2rem", marginBottom: "0.5rem" }}>
-                  All Products
-                </h2>
-
-                <ul style={{ listStyle: "none", padding: 0 }}>
-                  {products.length > 0 ? (
-                    products.map((p) => (
-                      <li
-                        key={p.id}
-                        onClick={() => setSelectedProduct(p)}
-                        style={{
-                          borderBottom: "1px solid #ddd",
-                          padding: "8px 0",
-                          cursor: "pointer",
-                          display: "flex",
-                          justifyContent: "space-between",
-                        }}
-                      >
-                        <span>
-                          {p.name} {p.category ? `(${p.category})` : ""}
-                        </span>
-                        {p.price && <span>₹{p.price}</span>}
-                      </li>
-                    ))
-                  ) : (
-                    <p>No products found</p>
-                  )}
-                </ul>
-
-                {selectedProduct && (
-                  <div
-                    style={{
-                      marginTop: "2rem",
-                      padding: "1rem",
-                      border: "1px solid #ddd",
-                      borderRadius: "8px",
-                    }}
-                  >
-                    <h3 style={{ fontWeight: "bold", marginBottom: "0.5rem" }}>
-                      Leave feedback for: {selectedProduct.name}
-                    </h3>
-
-                    {userId ? (
-                      <FeedbackForm
-                        productId={selectedProduct.id}
-                        userId={userId}
-                      />
-                    ) : (
-                      <p style={{ color: "red" }}>
-                        ⚠️ Please log in to submit feedback.
-                      </p>
-                    )}
-
-                    <button
-                      onClick={() => setSelectedProduct(null)}
-                      style={{
-                        marginTop: "0.5rem",
-                        backgroundColor: "#ccc",
-                        padding: "6px 12px",
-                        borderRadius: "6px",
-                        border: "none",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Close
-                    </button>
-                  </div>
-                )}
-              </div>
-            }
           />
         </Routes>
       </div>

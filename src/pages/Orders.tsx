@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { Package, Truck, MapPin, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Package, Truck, MapPin, Clock, CheckCircle, XCircle, Star } from 'lucide-react';
+import ProductReviews from '../components/products/ProductReviews';
+import { useUserHasDeliveredOrder } from '../hooks/useUserHasDeliveredOrder';
 
 interface OrderItem {
   id: string;
@@ -23,14 +25,65 @@ interface Order {
   delivery_address: string;
   phone: string;
   created_at: string;
-  delivery_status?: string; // Added delivery_status field
-  estimated_delivery?: string; // Added estimated delivery time
+  delivery_status?: string;
+  estimated_delivery?: string;
   order_items?: OrderItem[];
+}
+
+// Define the props interface for OrderItemWithReview
+interface OrderItemWithReviewProps {
+  item: OrderItem;
+  isDelivered: boolean;
+  onWriteReview: (productId: string, productName: string) => void;
+}
+
+// Define OrderItemWithReview component BEFORE the main Orders component
+function OrderItemWithReview({ item, isDelivered, onWriteReview }: OrderItemWithReviewProps) {
+  const hasDeliveredOrder = useUserHasDeliveredOrder(item.product_id);
+  const canReview = isDelivered && hasDeliveredOrder;
+
+  console.log('OrderItemWithReview:', {
+    productId: item.product_id,
+    productName: item.product_name,
+    isDelivered,
+    hasDeliveredOrder,
+    canReview
+  });
+
+  return (
+    <div className="bg-gray-50 p-3 rounded">
+      <div className="flex justify-between text-sm mb-2">
+        <span className="text-gray-700">
+          <span className="font-medium">{item.product_name}</span>
+          <span className="text-gray-500"> × {item.quantity}</span>
+        </span>
+        <span className="font-semibold text-gray-800">₹{(item.price * item.quantity).toFixed(2)}</span>
+      </div>
+      
+      {/* TEMPORARY: Always show review button for testing */}
+      {(true) && (
+        <button
+          onClick={() => onWriteReview(item.product_id, item.product_name)}
+          className="mt-2 w-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white py-2 px-4 rounded-lg font-semibold hover:from-yellow-500 hover:to-orange-600 transition-all flex items-center justify-center gap-2 text-sm shadow-md hover:shadow-lg"
+        >
+          <Star className="w-4 h-4" />
+          Write a Review
+        </button>
+      )}
+      
+      {/* Debug info */}
+      <div className="mt-2 text-xs text-gray-500 text-center">
+        Debug: isDelivered: {isDelivered.toString()}, hasDeliveredOrder: {hasDeliveredOrder.toString()}
+      </div>
+    </div>
+  );
 }
 
 function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProductForReview, setSelectedProductForReview] = useState<{ id: string; name: string } | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -66,6 +119,17 @@ function Orders() {
     }
   };
 
+  const handleWriteReview = (productId: string, productName: string) => {
+    console.log('Write review clicked:', { productId, productName });
+    setSelectedProductForReview({ id: productId, name: productName });
+    setShowReviewModal(true);
+  };
+
+  const closeReviewModal = () => {
+    setShowReviewModal(false);
+    setSelectedProductForReview(null);
+  };
+
   const getStatusColor = (status: string): string => {
     const colors: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
@@ -77,7 +141,6 @@ function Orders() {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-  // New function to get delivery status color and icon
   const getDeliveryStatusInfo = (deliveryStatus?: string) => {
     const statusMap: Record<string, { color: string; icon: any; label: string }> = {
       pending: { 
@@ -115,7 +178,6 @@ function Orders() {
     return statusMap[deliveryStatus || 'pending'] || statusMap.pending;
   };
 
-  // Check if order can be tracked (has delivery status and is not delivered/cancelled)
   const canTrackOrder = (order: Order): boolean => {
     const trackableStatuses = ['confirmed', 'preparing', 'out_for_delivery'];
     return trackableStatuses.includes(order.delivery_status || '');
@@ -158,6 +220,7 @@ function Orders() {
             const deliveryInfo = getDeliveryStatusInfo(order.delivery_status);
             const DeliveryIcon = deliveryInfo.icon;
             const isTrackable = canTrackOrder(order);
+            const isDelivered = order.delivery_status === 'delivered';
 
             return (
               <div key={order.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
@@ -200,13 +263,12 @@ function Orders() {
                     </h3>
                     <div className="space-y-2">
                       {order.order_items?.map(item => (
-                        <div key={item.id} className="flex justify-between text-sm bg-gray-50 p-3 rounded">
-                          <span className="text-gray-700">
-                            <span className="font-medium">{item.product_name}</span>
-                            <span className="text-gray-500"> × {item.quantity}</span>
-                          </span>
-                          <span className="font-semibold text-gray-800">₹{(item.price * item.quantity).toFixed(2)}</span>
-                        </div>
+                        <OrderItemWithReview 
+                          key={item.id} 
+                          item={item} 
+                          isDelivered={isDelivered}
+                          onWriteReview={handleWriteReview}
+                        />
                       ))}
                     </div>
                   </div>
@@ -264,13 +326,13 @@ function Orders() {
                     </div>
                   )}
 
-                  {order.delivery_status === 'delivered' && (
+                  {isDelivered && (
                     <div className="mt-6 pt-4 border-t border-gray-200">
                       <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
                         <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
                         <div>
                           <p className="font-semibold text-green-800">Order Delivered!</p>
-                          <p className="text-sm text-green-700">Thank you for shopping with us.</p>
+                          <p className="text-sm text-green-700">Thank you for shopping with us. Please share your feedback!</p>
                         </div>
                       </div>
                     </div>
@@ -281,6 +343,68 @@ function Orders() {
           })}
         </div>
       </div>
+
+      {/* Review Modal */}
+      {showReviewModal && selectedProductForReview && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in"
+          onClick={closeReviewModal}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-gradient-to-r from-yellow-500 to-orange-600 text-white p-6 rounded-t-2xl z-10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold">{selectedProductForReview.name}</h3>
+                  <p className="text-white/80 mt-1">Share your experience with this product</p>
+                </div>
+                <button
+                  onClick={closeReviewModal}
+                  className="text-white hover:bg-white/20 rounded-full p-2 transition-all"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              <ProductReviews 
+                productId={selectedProductForReview.id}
+                productName={selectedProductForReview.name}
+                onClose={closeReviewModal}
+                userHasDeliveredOrder={true}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add custom animations */}
+      <style>{`
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes slide-up {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out;
+        }
+        
+        .animate-slide-up {
+          animation: slide-up 0.4s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
