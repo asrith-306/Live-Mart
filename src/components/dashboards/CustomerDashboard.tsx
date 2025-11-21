@@ -32,19 +32,37 @@ const CustomerDashboard: React.FC = () => {
   }, [selectedCategory]);
 
   const loadProducts = async () => {
-    try {
-      setLoading(true);
-      const data = selectedCategory === 'All' 
-        ? await fetchProducts()
-        : await fetchProductsByCategory(selectedCategory);
-      setProducts(data);
-    } catch (error) {
-      console.error('Failed to load products:', error);
-      alert('Failed to load products');
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+    
+    // Fetch retailer products (their actual inventory)
+    let retailerProducts = selectedCategory === 'All' 
+      ? await fetchProducts()
+      : await fetchProductsByCategory(selectedCategory);
+    
+    // Also fetch wholesaler products that are available
+    const { fetchWholesalerProducts } = await import('@/services/productService');
+    const wholesalerProducts = await fetchWholesalerProducts();
+    
+    // Get retailer product IDs to avoid duplicates
+    const retailerProductIds = new Set(retailerProducts.map(p => p.id));
+    
+    // Filter wholesaler products that aren't already sold by retailers
+    const availableWholesalerProducts = wholesalerProducts.filter(
+      wp => !retailerProductIds.has(wp.id)
+    );
+    
+    // Combine both - customers see everything available
+    const allProducts = [...retailerProducts, ...availableWholesalerProducts];
+    
+    setProducts(allProducts);
+  } catch (error) {
+    console.error('Failed to load products:', error);
+    alert('Failed to load products');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleAddToCart = (product: Product) => {
     console.log('Adding product to cart:', product);
@@ -162,14 +180,20 @@ const CustomerDashboard: React.FC = () => {
             {filteredProducts.map((product, index) => (
               <div
                 key={product.id}
-                className="animate-slide-up"
+                className="animate-slide-up relative"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <ProductCard
-                  product={product}
-                  onAddToCart={handleAddToCart}
-                />
+                {/* Show badge if product is from wholesaler (no retailer_id) */}
+                {!product.retailer_id && (
+                  <div className="absolute top-2 left-2 z-10 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-semibold shadow-lg">
+                    🏭 Direct from Wholesaler
               </div>
+  )}
+  <ProductCard
+    product={product}
+    onAddToCart={handleAddToCart}
+  />
+</div>
             ))}
           </div>
         ) : (
