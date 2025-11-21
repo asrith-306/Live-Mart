@@ -2,14 +2,20 @@
 import React, { useState, useEffect } from 'react';
 import { fetchProducts, fetchProductsByCategory, Product } from '@/services/productService';
 import ProductCard from '@/components/products/ProductCard';
-import { supabase } from '@/utils/supabaseClient';
+import { X, Trash2, Plus, Minus } from 'lucide-react';
+import { useCart } from '@/context/CartContext'; // Import useCart
 
 const CustomerDashboard: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [cart, setCart] = useState<(Product & { cartQuantity: number })[]>([]);
+  const [showCartModal, setShowCartModal] = useState(false);
+  const [showAddedNotification, setShowAddedNotification] = useState(false);
+  const [lastAddedProduct, setLastAddedProduct] = useState<string>('');
+
+  // Use CartContext instead of local state
+  const { cartItems, addToCart, removeFromCart, updateQuantity, getCartTotal, getCartCount } = useCart();
 
   const categories = [
     { name: 'All', icon: '🛍️', color: 'from-purple-500 to-pink-500' },
@@ -41,19 +47,13 @@ const CustomerDashboard: React.FC = () => {
   };
 
   const handleAddToCart = (product: Product) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
-      if (existing) {
-        return prev.map(item => 
-          item.id === product.id 
-            ? { ...item, cartQuantity: item.cartQuantity + 1 }
-            : item
-        );
-      }
-      return [...prev, { ...product, cartQuantity: 1 }];
-    });
-    // You can add a toast notification here
-    console.log(`Added ${product.name} to cart`);
+    console.log('Adding product to cart:', product);
+    addToCart(product, 1); // Use CartContext's addToCart
+    
+    // Show notification
+    setLastAddedProduct(product.name);
+    setShowAddedNotification(true);
+    setTimeout(() => setShowAddedNotification(false), 3000);
   };
 
   const filteredProducts = products.filter(product =>
@@ -61,7 +61,8 @@ const CustomerDashboard: React.FC = () => {
     product.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const cartItemCount = cart.reduce((sum, item) => sum + item.cartQuantity, 0);
+  const cartItemCount = getCartCount(); // Use CartContext's getCartCount
+  const cartTotal = getCartTotal(); // Use CartContext's getCartTotal
 
   if (loading) {
     return (
@@ -83,10 +84,14 @@ const CustomerDashboard: React.FC = () => {
             <h1 className="text-5xl font-bold animate-fade-in">🛍️ Discover Amazing Products</h1>
             {/* Cart indicator */}
             {cartItemCount > 0 && (
-              <div className="bg-white/20 px-4 py-2 rounded-full flex items-center gap-2">
+              <button
+                onClick={() => setShowCartModal(true)}
+                className="bg-white/20 px-6 py-3 rounded-full flex items-center gap-3 hover:bg-white/30 transition-all transform hover:scale-105 cursor-pointer"
+              >
                 <span className="text-2xl">🛒</span>
-                <span className="font-semibold">{cartItemCount} items</span>
-              </div>
+                <span className="font-semibold text-lg">{cartItemCount} items</span>
+                <span className="text-sm opacity-90">₹{cartTotal.toFixed(2)}</span>
+              </button>
             )}
           </div>
           <p className="text-xl opacity-90 mb-6">Explore our curated collection of quality items</p>
@@ -192,6 +197,124 @@ const CustomerDashboard: React.FC = () => {
         )}
       </div>
 
+      {/* Added to Cart Notification */}
+      {showAddedNotification && (
+        <div className="fixed top-24 right-8 z-50 animate-slide-in">
+          <div className="bg-green-500 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3">
+            <span className="text-2xl">✓</span>
+            <div>
+              <p className="font-semibold">Added to cart!</p>
+              <p className="text-sm opacity-90">{lastAddedProduct}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cart Modal - Big popup with blurred background, center aligned */}
+      {showCartModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          onClick={() => setShowCartModal(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cart Header */}
+            <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-3xl font-bold flex items-center gap-3">
+                  <span>🛒</span> Your Shopping Cart
+                </h2>
+                <button
+                  onClick={() => setShowCartModal(false)}
+                  className="text-white hover:bg-white/20 rounded-full p-2 transition-all"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <p className="text-white/90 mt-2 text-lg">{cartItemCount} {cartItemCount === 1 ? 'item' : 'items'} in your cart</p>
+            </div>
+
+            {/* Cart Items */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {cartItems.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="text-8xl mb-6">🛒</div>
+                  <p className="text-gray-600 text-xl font-medium">Your cart is empty</p>
+                  <p className="text-gray-500 mt-2">Add some products to get started!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {cartItems.map((item) => (
+                    <div key={item.id} className="flex gap-4 bg-gray-50 p-5 rounded-xl hover:shadow-md transition-shadow">
+                      <div className="w-24 h-24 bg-gray-200 rounded-lg flex-shrink-0 overflow-hidden">
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-3xl">
+                            📦
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-800 text-lg mb-1">{item.name}</h3>
+                        <p className="text-sm text-gray-600 mb-2">{item.category}</p>
+                        <p className="text-xl font-bold text-purple-600">₹{item.price}</p>
+                      </div>
+                      <div className="flex flex-col items-end justify-between">
+                        <button
+                          onClick={() => removeFromCart(item.id)}
+                          className="text-red-500 hover:text-red-700 font-medium flex items-center gap-1 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Remove
+                        </button>
+                        <div className="flex items-center gap-2 bg-white rounded-lg border-2 border-gray-300">
+                          <button
+                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            className="px-3 py-2 hover:bg-gray-100 rounded-l-lg transition-colors"
+                            disabled={item.quantity <= 1}
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <span className="px-4 font-bold text-lg">{item.quantity}</span>
+                          <button
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            className="px-3 py-2 hover:bg-gray-100 rounded-r-lg transition-colors"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Cart Footer */}
+            {cartItems.length > 0 && (
+              <div className="border-t-2 border-gray-200 p-6 bg-gray-50">
+                <div className="flex items-center justify-between mb-5">
+                  <span className="text-xl font-semibold text-gray-800">Total Amount:</span>
+                  <span className="text-3xl font-bold text-purple-600">₹{cartTotal.toFixed(2)}</span>
+                </div>
+                <button
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-xl font-bold text-lg hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-[1.02] shadow-lg"
+                  onClick={() => {
+                    alert('Proceeding to checkout...');
+                    setShowCartModal(false);
+                  }}
+                >
+                  Proceed to Checkout →
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Add custom animations */}
       <style>{`
         @keyframes fade-in {
@@ -203,6 +326,11 @@ const CustomerDashboard: React.FC = () => {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
+
+        @keyframes slide-in {
+          from { opacity: 0; transform: translateX(100px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
         
         .animate-fade-in {
           animation: fade-in 0.6s ease-out;
@@ -211,6 +339,10 @@ const CustomerDashboard: React.FC = () => {
         .animate-slide-up {
           animation: slide-up 0.4s ease-out forwards;
           opacity: 0;
+        }
+
+        .animate-slide-in {
+          animation: slide-in 0.4s ease-out;
         }
       `}</style>
     </div>

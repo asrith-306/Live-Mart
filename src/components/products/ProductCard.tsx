@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Star, ShoppingCart, Eye } from 'lucide-react';
+import { Star, ShoppingCart, Eye, X, Package } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { Product, fetchProductReviews, ProductReview } from '../../services/productService';
 import ProductReviews from './ProductReviews';
 import { useUserHasDeliveredOrder } from '../../hooks/useUserHasDeliveredOrder';
@@ -11,7 +12,6 @@ interface ProductCardProps {
 
 function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const [showReviews, setShowReviews] = useState(false);
-  const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [averageRating, setAverageRating] = useState(0);
   const [reviewCount, setReviewCount] = useState(0);
   const hasDeliveredOrder = useUserHasDeliveredOrder(product.id);
@@ -24,15 +24,26 @@ function ProductCard({ product, onAddToCart }: ProductCardProps) {
     if (!product.id) return;
     try {
       const data = await fetchProductReviews(product.id);
-      setReviews(data);
       setReviewCount(data.length);
       if (data.length > 0) {
-        const avg = data.reduce((sum, r) => sum + r.rating, 0) / data.length;
+        const avg = data.reduce((sum: number, r: ProductReview) => sum + r.rating, 0) / data.length;
         setAverageRating(avg);
       }
     } catch (error) {
       console.error('Error loading review stats:', error);
     }
+  };
+
+  const handleOpenReviews = () => {
+    console.log('Opening reviews for product:', product.id, product.name);
+    setShowReviews(true);
+  };
+
+  const handleCloseReviews = () => {
+    console.log('Closing reviews modal');
+    setShowReviews(false);
+    // Reload stats in case a review was added
+    loadReviewStats();
   };
 
   const renderStars = (rating: number) => {
@@ -48,24 +59,34 @@ function ProductCard({ product, onAddToCart }: ProductCardProps) {
     );
   };
 
+  const getStockStatus = () => {
+    if (!product.stock || product.stock === 0) {
+      return { text: 'Out of Stock', color: 'text-red-600', bgColor: 'bg-red-50', icon: '❌' };
+    } else if (product.stock < 10) {
+      return { text: `Only ${product.stock} left`, color: 'text-orange-600', bgColor: 'bg-orange-50', icon: '⚠️' };
+    } else if (product.stock < 50) {
+      return { text: `${product.stock} in stock`, color: 'text-blue-600', bgColor: 'bg-blue-50', icon: '📦' };
+    } else {
+      return { text: `${product.stock} in stock`, color: 'text-green-600', bgColor: 'bg-green-50', icon: '✅' };
+    }
+  };
+
+  const stockStatus = getStockStatus();
+
   return (
     <>
       <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col">
         {/* Product Image */}
         <div className="relative h-48 bg-gray-100">
           {product.image_url ? (
-            <img
-              src={product.image_url}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
+            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400">
               <ShoppingCart className="w-16 h-16" />
             </div>
           )}
           {product.stock && product.stock < 10 && product.stock > 0 && (
-            <span className="absolute top-2 right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
+            <span className="absolute top-2 right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-semibold shadow-md">
               Only {product.stock} left
             </span>
           )}
@@ -85,7 +106,7 @@ function ProductCard({ product, onAddToCart }: ProductCardProps) {
             {/* Rating Display */}
             <div 
               className="flex items-center gap-2 mb-2 cursor-pointer hover:bg-gray-50 p-1 rounded -ml-1"
-              onClick={() => setShowReviews(true)}
+              onClick={handleOpenReviews}
             >
               {renderStars(averageRating)}
               <span className="text-sm text-gray-600">
@@ -99,26 +120,31 @@ function ProductCard({ product, onAddToCart }: ProductCardProps) {
             {product.description && (
               <p className="text-gray-600 text-sm mb-3 line-clamp-2">{product.description}</p>
             )}
+
+            {/* Stock Status Badge */}
+            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg ${stockStatus.bgColor} ${stockStatus.color} text-sm font-semibold mb-3`}>
+              <Package className="w-4 h-4" />
+              <span>{stockStatus.text}</span>
+            </div>
           </div>
 
           {/* Price and Actions */}
           <div className="mt-auto">
             <div className="flex items-center justify-between mb-3">
               <span className="text-2xl font-bold text-blue-600">₹{product.price}</span>
-              {product.stock && product.stock > 0 && (
-                <span className="text-sm text-green-600 font-medium">In Stock</span>
-              )}
             </div>
 
             <div className="flex gap-2">
               <button
-                onClick={() => setShowReviews(true)}
+                type="button"
+                onClick={handleOpenReviews}
                 className="flex-1 bg-gray-100 text-gray-700 py-2 px-3 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
               >
                 <Eye className="w-4 h-4" />
                 Reviews
               </button>
               <button
+                type="button"
                 onClick={() => onAddToCart(product)}
                 disabled={!product.stock || product.stock === 0}
                 className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2 px-3 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm font-medium shadow-md hover:shadow-lg"
@@ -132,25 +158,40 @@ function ProductCard({ product, onAddToCart }: ProductCardProps) {
       </div>
 
       {/* Reviews Modal */}
-      {showReviews && product.id && (
+      {showReviews && product.id && createPortal(
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-          onClick={() => setShowReviews(false)}
+          className="fixed inset-0 flex items-center justify-center p-4"
+          style={{ zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.6)' }}
+          onClick={handleCloseReviews}
         >
           <div 
-            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 flex items-center justify-between flex-shrink-0">
+              <h2 className="text-2xl font-bold">Product Reviews</h2>
+              <button
+                type="button"
+                onClick={handleCloseReviews}
+                className="text-white hover:bg-white/20 rounded-full p-2 transition-all"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            {/* Modal Content */}
+            <div className="overflow-y-auto flex-1 p-6">
               <ProductReviews
                 productId={product.id}
                 productName={product.name}
-                onClose={() => setShowReviews(false)}
+                onClose={handleCloseReviews}
                 userHasDeliveredOrder={hasDeliveredOrder}
               />
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

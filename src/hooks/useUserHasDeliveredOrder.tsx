@@ -1,4 +1,3 @@
-// hooks/useUserHasDeliveredOrder.ts
 import { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 
@@ -21,17 +20,17 @@ export function useUserHasDeliveredOrder(productId: string | undefined): boolean
         }
 
         // Check if user has any delivered order containing this product
-        // Using a simpler query approach that works with Supabase
         const { data: orders, error } = await supabase
           .from('orders')
           .select(`
             id,
+            delivery_status,
             order_items (
               product_id
             )
           `)
           .eq('customer_id', user.id)
-          .or('status.eq.delivered,delivery_status.eq.delivered');
+          .eq('delivery_status', 'delivered');
 
         if (error) {
           console.error('Error checking delivered order:', error);
@@ -39,7 +38,7 @@ export function useUserHasDeliveredOrder(productId: string | undefined): boolean
           return;
         }
 
-        // Check if any order contains this product
+        // Check if any delivered order contains this product
         const hasProduct = orders?.some(order => 
           order.order_items?.some((item: any) => item.product_id === productId)
         );

@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { Package, Truck, MapPin, Clock, CheckCircle, XCircle, Star } from 'lucide-react';
-import ProductReviews from '../components/products/ProductReviews';
-import { useUserHasDeliveredOrder } from '../hooks/useUserHasDeliveredOrder';
+import { Package, Truck, MapPin, Clock, CheckCircle, XCircle } from 'lucide-react';
 
 interface OrderItem {
   id: string;
@@ -19,71 +17,19 @@ interface Order {
   id: string;
   customer_id: string;
   total_price: number;
-  status: string;
   payment_method: string;
   payment_status: string;
   delivery_address: string;
   phone: string;
   created_at: string;
-  delivery_status?: string;
+  delivery_status: string;
   estimated_delivery?: string;
   order_items?: OrderItem[];
-}
-
-// Define the props interface for OrderItemWithReview
-interface OrderItemWithReviewProps {
-  item: OrderItem;
-  isDelivered: boolean;
-  onWriteReview: (productId: string, productName: string) => void;
-}
-
-// Define OrderItemWithReview component BEFORE the main Orders component
-function OrderItemWithReview({ item, isDelivered, onWriteReview }: OrderItemWithReviewProps) {
-  const hasDeliveredOrder = useUserHasDeliveredOrder(item.product_id);
-  const canReview = isDelivered && hasDeliveredOrder;
-
-  console.log('OrderItemWithReview:', {
-    productId: item.product_id,
-    productName: item.product_name,
-    isDelivered,
-    hasDeliveredOrder,
-    canReview
-  });
-
-  return (
-    <div className="bg-gray-50 p-3 rounded">
-      <div className="flex justify-between text-sm mb-2">
-        <span className="text-gray-700">
-          <span className="font-medium">{item.product_name}</span>
-          <span className="text-gray-500"> × {item.quantity}</span>
-        </span>
-        <span className="font-semibold text-gray-800">₹{(item.price * item.quantity).toFixed(2)}</span>
-      </div>
-      
-      {/* TEMPORARY: Always show review button for testing */}
-      {(true) && (
-        <button
-          onClick={() => onWriteReview(item.product_id, item.product_name)}
-          className="mt-2 w-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white py-2 px-4 rounded-lg font-semibold hover:from-yellow-500 hover:to-orange-600 transition-all flex items-center justify-center gap-2 text-sm shadow-md hover:shadow-lg"
-        >
-          <Star className="w-4 h-4" />
-          Write a Review
-        </button>
-      )}
-      
-      {/* Debug info */}
-      <div className="mt-2 text-xs text-gray-500 text-center">
-        Debug: isDelivered: {isDelivered.toString()}, hasDeliveredOrder: {hasDeliveredOrder.toString()}
-      </div>
-    </div>
-  );
 }
 
 function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedProductForReview, setSelectedProductForReview] = useState<{ id: string; name: string } | null>(null);
-  const [showReviewModal, setShowReviewModal] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -119,68 +65,21 @@ function Orders() {
     }
   };
 
-  const handleWriteReview = (productId: string, productName: string) => {
-    console.log('Write review clicked:', { productId, productName });
-    setSelectedProductForReview({ id: productId, name: productName });
-    setShowReviewModal(true);
-  };
-
-  const closeReviewModal = () => {
-    setShowReviewModal(false);
-    setSelectedProductForReview(null);
-  };
-
-  const getStatusColor = (status: string): string => {
-    const colors: Record<string, string> = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      confirmed: 'bg-blue-100 text-blue-800',
-      dispatched: 'bg-purple-100 text-purple-800',
-      delivered: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800',
+  const getStatusInfo = (deliveryStatus: string) => {
+    const statusMap: Record<string, { color: string; bgColor: string; icon: any; label: string }> = {
+      pending: { color: 'text-gray-800', bgColor: 'bg-gray-100', icon: Clock, label: 'Pending' },
+      confirmed: { color: 'text-blue-800', bgColor: 'bg-blue-100', icon: CheckCircle, label: 'Confirmed' },
+      preparing: { color: 'text-yellow-800', bgColor: 'bg-yellow-100', icon: Package, label: 'Preparing' },
+      out_for_delivery: { color: 'text-purple-800', bgColor: 'bg-purple-100', icon: Truck, label: 'Out for Delivery' },
+      delivered: { color: 'text-green-800', bgColor: 'bg-green-100', icon: CheckCircle, label: 'Delivered' },
+      cancelled: { color: 'text-red-800', bgColor: 'bg-red-100', icon: XCircle, label: 'Cancelled' }
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
-
-  const getDeliveryStatusInfo = (deliveryStatus?: string) => {
-    const statusMap: Record<string, { color: string; icon: any; label: string }> = {
-      pending: { 
-        color: 'bg-gray-100 text-gray-800', 
-        icon: Clock, 
-        label: 'Pending' 
-      },
-      confirmed: { 
-        color: 'bg-blue-100 text-blue-800', 
-        icon: CheckCircle, 
-        label: 'Confirmed' 
-      },
-      preparing: { 
-        color: 'bg-yellow-100 text-yellow-800', 
-        icon: Package, 
-        label: 'Preparing' 
-      },
-      out_for_delivery: { 
-        color: 'bg-purple-100 text-purple-800', 
-        icon: Truck, 
-        label: 'Out for Delivery' 
-      },
-      delivered: { 
-        color: 'bg-green-100 text-green-800', 
-        icon: CheckCircle, 
-        label: 'Delivered' 
-      },
-      cancelled: { 
-        color: 'bg-red-100 text-red-800', 
-        icon: XCircle, 
-        label: 'Cancelled' 
-      }
-    };
-
-    return statusMap[deliveryStatus || 'pending'] || statusMap.pending;
+    return statusMap[deliveryStatus] || statusMap.pending;
   };
 
   const canTrackOrder = (order: Order): boolean => {
     const trackableStatuses = ['confirmed', 'preparing', 'out_for_delivery'];
-    return trackableStatuses.includes(order.delivery_status || '');
+    return trackableStatuses.includes(order.delivery_status);
   };
 
   if (loading) {
@@ -200,15 +99,14 @@ function Orders() {
         <Package className="w-20 h-20 text-gray-400 mb-4" />
         <h1 className="text-3xl font-bold mb-4">No Orders Yet</h1>
         <p className="text-gray-600 mb-6">Start shopping to see your orders here</p>
-        <button
-          onClick={() => navigate('/customer')}
-          className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors font-semibold"
-        >
+        <button onClick={() => navigate('/customer')} className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors font-semibold">
           Start Shopping
         </button>
       </div>
     );
   }
+
+  console.log('Orders component rendering. Number of orders:', orders.length);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -217,8 +115,8 @@ function Orders() {
 
         <div className="space-y-6">
           {orders.map(order => {
-            const deliveryInfo = getDeliveryStatusInfo(order.delivery_status);
-            const DeliveryIcon = deliveryInfo.icon;
+            const statusInfo = getStatusInfo(order.delivery_status);
+            const StatusIcon = statusInfo.icon;
             const isTrackable = canTrackOrder(order);
             const isDelivered = order.delivery_status === 'delivered';
 
@@ -231,25 +129,14 @@ function Orders() {
                       <p className="font-semibold text-lg">Order #{order.id.slice(0, 8).toUpperCase()}</p>
                       <p className="text-sm text-blue-100 mt-1">
                         {new Date(order.created_at).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
+                          day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
                         })}
                       </p>
                     </div>
-                    <div className="flex gap-2 flex-col items-end">
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(order.status)} bg-white`}>
-                        {order.status.toUpperCase()}
-                      </span>
-                      {order.delivery_status && (
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${deliveryInfo.color} bg-white flex items-center gap-1`}>
-                          <DeliveryIcon className="w-3 h-3" />
-                          {deliveryInfo.label}
-                        </span>
-                      )}
-                    </div>
+                    <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${statusInfo.bgColor} ${statusInfo.color} flex items-center gap-1.5`}>
+                      <StatusIcon className="w-4 h-4" />
+                      {statusInfo.label}
+                    </span>
                   </div>
                 </div>
 
@@ -263,12 +150,15 @@ function Orders() {
                     </h3>
                     <div className="space-y-2">
                       {order.order_items?.map(item => (
-                        <OrderItemWithReview 
-                          key={item.id} 
-                          item={item} 
-                          isDelivered={isDelivered}
-                          onWriteReview={handleWriteReview}
-                        />
+                        <div key={item.id} className="bg-gray-50 p-3 rounded">
+                          <div className="flex justify-between text-sm mb-2">
+                            <span className="text-gray-700">
+                              <span className="font-medium">{item.product_name}</span>
+                              <span className="text-gray-500"> × {item.quantity}</span>
+                            </span>
+                            <span className="font-semibold text-gray-800">₹{(item.price * item.quantity).toFixed(2)}</span>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -287,24 +177,19 @@ function Orders() {
                       <span className="font-semibold text-gray-600 min-w-[100px]">💳 Payment:</span>
                       <span className="text-gray-800">
                         {order.payment_method} 
-                        <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
-                          order.payment_status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}>
+                        <span className={`ml-2 px-2 py-0.5 rounded text-xs ${order.payment_status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                           {order.payment_status}
                         </span>
                       </span>
                     </div>
-                    
                     <div className="flex items-start gap-2">
                       <span className="font-semibold text-gray-600 min-w-[100px]">📍 Delivery:</span>
                       <span className="text-gray-800">{order.delivery_address}</span>
                     </div>
-                    
                     <div className="flex items-start gap-2">
                       <span className="font-semibold text-gray-600 min-w-[100px]">📞 Phone:</span>
                       <span className="text-gray-800">{order.phone}</span>
                     </div>
-
                     {order.estimated_delivery && (
                       <div className="flex items-start gap-2">
                         <span className="font-semibold text-gray-600 min-w-[100px]">⏰ ETA:</span>
@@ -326,13 +211,14 @@ function Orders() {
                     </div>
                   )}
 
+                  {/* Delivered Section */}
                   {isDelivered && (
                     <div className="mt-6 pt-4 border-t border-gray-200">
                       <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
                         <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
                         <div>
                           <p className="font-semibold text-green-800">Order Delivered!</p>
-                          <p className="text-sm text-green-700">Thank you for shopping with us. Please share your feedback!</p>
+                          <p className="text-sm text-green-700">Thank you for shopping with us. You can review products from the shop page.</p>
                         </div>
                       </div>
                     </div>
@@ -343,68 +229,6 @@ function Orders() {
           })}
         </div>
       </div>
-
-      {/* Review Modal */}
-      {showReviewModal && selectedProductForReview && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in"
-          onClick={closeReviewModal}
-        >
-          <div 
-            className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-slide-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="sticky top-0 bg-gradient-to-r from-yellow-500 to-orange-600 text-white p-6 rounded-t-2xl z-10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-2xl font-bold">{selectedProductForReview.name}</h3>
-                  <p className="text-white/80 mt-1">Share your experience with this product</p>
-                </div>
-                <button
-                  onClick={closeReviewModal}
-                  className="text-white hover:bg-white/20 rounded-full p-2 transition-all"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6">
-              <ProductReviews 
-                productId={selectedProductForReview.id}
-                productName={selectedProductForReview.name}
-                onClose={closeReviewModal}
-                userHasDeliveredOrder={true}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add custom animations */}
-      <style>{`
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        
-        @keyframes slide-up {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out;
-        }
-        
-        .animate-slide-up {
-          animation: slide-up 0.4s ease-out;
-        }
-      `}</style>
     </div>
   );
 }
