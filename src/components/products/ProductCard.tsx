@@ -198,3 +198,4 @@ function ProductCard({ product, onAddToCart }: ProductCardProps) {
 }
 
 export default ProductCard;
+git commit --amend -m "New commit message"
