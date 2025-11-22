@@ -1,3 +1,4 @@
+// src/App.tsx - FIXED VERSION
 import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "./utils/supabaseClient";
@@ -17,13 +18,9 @@ import DeliveryPartnerDashboard from './pages/DeliveryPartnerDashboard';
 import OrderManagement from "./components/order-management";
 import AuthCallback from "./components/AuthCallback";
 import MockPaymentGateway from "./MockPaymentGateway";
-
-type Product = {
-  id: string;
-  name: string;
-  price?: number;
-  category?: string;
-};
+import Queries from "./pages/Queries";
+import QueryDetails from "./pages/QueryDetails";
+import QueryManagement from "./components/QueryManagement";
 import './index.css';
 
 type UserRole = "customer" | "retailer" | "wholesaler" | "delivery_partner" | null;
@@ -43,7 +40,6 @@ function ProtectedRoute({
   }
   
   if (!allowedRoles.includes(userRole)) {
-    // Redirect to appropriate dashboard based on role
     if (userRole === "customer") {
       return <Navigate to="/customer" replace />;
     } else if (userRole === "retailer") {
@@ -59,8 +55,6 @@ function ProtectedRoute({
 }
 
 // Enhanced Navbar
-// Replace the Navbar function in your App.tsx with this:
-
 function Navbar({ 
   isLoggedIn, 
   onLogout, 
@@ -89,7 +83,6 @@ function Navbar({
         </button>
 
         <div className="flex gap-4 items-center">
-          {/* ========== LOGGED OUT STATE ========== */}
           {!isLoggedIn && (
             <>
               <button
@@ -107,10 +100,8 @@ function Navbar({
             </>
           )}
 
-          {/* ========== LOGGED IN STATE ========== */}
           {isLoggedIn && (
             <>
-              {/* CUSTOMER BUTTONS */}
               {userRole === "customer" && (
                 <>
                   <button
@@ -126,6 +117,12 @@ function Navbar({
                     My Orders
                   </button>
                   <button
+                    onClick={() => navigate('/queries')}
+                    className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold"
+                  >
+                    💬 Queries
+                  </button>
+                  <button
                     onClick={() => navigate('/cart')}
                     className="relative px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-300 transition-all font-semibold"
                   >
@@ -139,7 +136,6 @@ function Navbar({
                 </>
               )}
 
-              {/* RETAILER BUTTONS */}
               {userRole === "retailer" && (
                 <button
                   onClick={() => navigate('/retailer')}
@@ -149,7 +145,6 @@ function Navbar({
                 </button>
               )}
 
-              {/* DELIVERY PARTNER BUTTONS */}
               {userRole === "delivery_partner" && (
                 <button
                   onClick={() => navigate('/delivery-dashboard')}
@@ -159,7 +154,6 @@ function Navbar({
                 </button>
               )}
 
-              {/* WHOLESALER BUTTONS */}
               {userRole === "wholesaler" && (
                 <button
                   onClick={() => navigate('/wholesaler')}
@@ -169,7 +163,6 @@ function Navbar({
                 </button>
               )}
 
-              {/* LOGOUT BUTTON - Shows for ALL logged in users */}
               <button
                 onClick={handleLogoutClick}
                 className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all font-semibold shadow-md"
@@ -182,117 +175,36 @@ function Navbar({
       </div>
     </nav>
   );
-
-
-  return (
-    <nav className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg p-4 mb-0">
-      <div className="container mx-auto flex justify-between items-center">
-        <button 
-          onClick={() => navigate("/")}
-          className="text-2xl font-bold text-white hover:scale-105 transition-transform cursor-pointer flex items-center gap-2"
-        >
-          🛒 Live MART
-        </button>
-
-        {/* Only show these when logged in */}
-        {isLoggedIn && (
-          <div className="flex gap-4 items-center">
-            {/* Show role-specific buttons */}
-            {userRole === "customer" && (
-              <>
-                <button
-                  onClick={() => navigate('/customer')}
-                  className="px-4 py-2 rounded-lg bg-white text-blue-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
-                >
-                  Shop Products
-                </button>
-                <button
-                  onClick={() => navigate('/orders')}
-                  className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold"
-                >
-                  My Orders
-                </button>
-                <button
-                  onClick={() => navigate('/cart')}
-                  className="relative px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-300 transition-all font-semibold"
-                >
-                  🛒 Cart
-                  {getCartCount() > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
-                      {getCartCount()}
-                    </span>
-                  )}
-                </button>
-              </>
-            )}
-
-            {userRole === "retailer" && (
-              <button
-                onClick={() => navigate('/retailer')}
-                className="px-4 py-2 rounded-lg bg-white text-purple-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
-              >
-                Retailer Dashboard
-              </button>
-            )}
-
-            {userRole === "delivery_partner" && (
-              <button
-                onClick={() => navigate('/delivery-dashboard')}
-                className="px-4 py-2 rounded-lg bg-white text-green-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
-              >
-                Delivery Dashboard
-              </button>
-            )}
-
-            {userRole === "wholesaler" && (
-              <button
-                onClick={() => navigate('/wholesaler')}
-                className="px-4 py-2 rounded-lg bg-white text-green-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
-              >
-                Wholesaler Dashboard
-              </button>
-            )}
-
-            <button
-              onClick={handleLogoutClick}
-              className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all font-semibold"
-            >
-              Logout
-            </button>
-          </div>
-        )}
-      </div>
-    </nav>
-  );
 }
-// Add this to your App component in App.tsx
 
 function App() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>(null);
-  const [isLoading, setIsLoading] = useState(true); // ADD THIS LINE
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Get the logged-in user from Supabase Auth
   useEffect(() => {
+    let mounted = true;
+
     async function getUser() {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
         
+        if (!mounted) return;
+
         if (user) {
           setUserId(user.id);
           setIsLoggedIn(true);
           
-          // Fetch user role from users table
-          const { data: userData } = await supabase
+          const { data: userData, error } = await supabase
             .from("users")
             .select("role")
             .eq("auth_id", user.id)
             .single();
           
-          if (userData) {
+          if (!mounted) return;
+          
+          if (!error && userData) {
             setUserRole(userData.role as UserRole);
           }
         } else {
@@ -302,27 +214,44 @@ function App() {
         }
       } catch (error) {
         console.error("Error fetching user:", error);
+        if (mounted) {
+          setUserId(null);
+          setIsLoggedIn(false);
+          setUserRole(null);
+        }
       } finally {
-        setIsLoading(false); // ADD THIS LINE
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     }
 
+    // Set a timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (mounted && isLoading) {
+        console.warn("Auth loading timeout - forcing completion");
+        setIsLoading(false);
+      }
+    }, 3000);
+
     getUser();
 
-    // Listen for login/logout events
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+
       if (session?.user) {
         setUserId(session.user.id);
         setIsLoggedIn(true);
         
-        // Fetch user role
-        const { data: userData } = await supabase
+        const { data: userData, error } = await supabase
           .from("users")
           .select("role")
           .eq("auth_id", session.user.id)
           .single();
         
-        if (userData) {
+        if (!mounted) return;
+        
+        if (!error && userData) {
           setUserRole(userData.role as UserRole);
         }
       } else {
@@ -330,10 +259,12 @@ function App() {
         setIsLoggedIn(false);
         setUserRole(null);
       }
-      setIsLoading(false); // ADD THIS LINE
+      setIsLoading(false);
     });
 
     return () => {
+      mounted = false;
+      clearTimeout(timeoutId);
       listener.subscription.unsubscribe();
     };
   }, []);
@@ -342,15 +273,18 @@ function App() {
     setUserId(id);
     setIsLoggedIn(true);
     
-    // Fetch user role after login
-    const { data: userData } = await supabase
-      .from("users")
-      .select("role")
-      .eq("auth_id", id)
-      .single();
-    
-    if (userData) {
-      setUserRole(userData.role as UserRole);
+    try {
+      const { data: userData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("auth_id", id)
+        .single();
+      
+      if (userData) {
+        setUserRole(userData.role as UserRole);
+      }
+    } catch (error) {
+      console.error("Error fetching user role:", error);
     }
   };
 
@@ -361,7 +295,6 @@ function App() {
     setUserRole(null);
   };
 
-  // ADD THIS - Show loading spinner while checking auth
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -379,19 +312,11 @@ function App() {
         <Navbar isLoggedIn={isLoggedIn} onLogout={handleLogout} userRole={userRole} />
         
         <Routes>
-          {/* 🏠 Home Page */}
           <Route path="/" element={<HomePage isLoggedIn={isLoggedIn} />} />
-          
-          {/* ✍️ Signup Page */}
           <Route path="/signup" element={<Signup />} />
-          
-          {/* 🔐 Login Page */}
           <Route path="/login" element={<Login onLogin={handleLogin} userRole={userRole} />} />
-          
-          {/* 🔄 Auth Callback */}
           <Route path="/auth/callback" element={<AuthCallback />} />
           
-          {/* 🛒 Customer Dashboard - Only for customers */}
           <Route 
             path="/customer" 
             element={
@@ -401,7 +326,6 @@ function App() {
             } 
           />
           
-          {/* 📦 Order Tracking - Only for customers */}
           <Route 
             path="/track-order/:orderId" 
             element={
@@ -411,7 +335,33 @@ function App() {
             } 
           />
           
-          {/* 🚚 Delivery Partner Dashboard - Only for delivery partners */}
+          <Route 
+            path="/queries" 
+            element={
+              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
+                <Queries />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/query/:queryId" 
+            element={
+              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
+                <QueryDetails />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/retailer/queries" 
+            element={
+              <ProtectedRoute allowedRoles={["retailer"]} userRole={userRole}>
+                <QueryManagement />
+              </ProtectedRoute>
+            } 
+          />
+          
           <Route 
             path="/delivery-dashboard" 
             element={
@@ -421,7 +371,6 @@ function App() {
             } 
           />
           
-          {/* 📦 Order Management - For retailers/wholesalers */}
           <Route 
             path="/order-management" 
             element={
@@ -431,7 +380,6 @@ function App() {
             } 
           />
           
-          {/* 🏪 Retailer Dashboard - ONLY for retailers */}
           <Route 
             path="/retailer" 
             element={
@@ -441,7 +389,6 @@ function App() {
             } 
           />
 
-          {/* 🏭 Wholesaler Dashboard - ONLY for wholesalers */}
           <Route 
             path="/wholesaler" 
             element={
@@ -451,7 +398,6 @@ function App() {
             } 
           />
           
-          {/* 🛒 Cart & Orders - Only for customers */}
           <Route 
             path="/cart" 
             element={
@@ -460,6 +406,7 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          
           <Route 
             path="/checkout" 
             element={
@@ -468,6 +415,7 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          
           <Route 
             path="/order-success/:orderId" 
             element={
@@ -476,7 +424,9 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          
           <Route path="/mock-payment" element={<MockPaymentGateway />} />
+          
           <Route 
             path="/orders" 
             element={
