@@ -61,20 +61,91 @@ const CustomerDashboard: React.FC = () => {
     }
   }, [lastPurchasedCategory, cartItems]);
 
-  const loadProducts = async () => {
-    try {
-      setLoading(true);
-      const data = selectedCategory === 'All' 
-        ? await fetchProducts()
-        : await fetchProductsByCategory(selectedCategory);
-      setProducts(data);
-    } catch (error) {
-      console.error('Failed to load products:', error);
-      alert('Failed to load products');
-    } finally {
-      setLoading(false);
-    }
-  };
+const loadProducts = async () => {
+  try {
+    setLoading(true);
+    
+    // Fetch ALL retailer products (from all retailers)
+    let retailerProducts = selectedCategory === 'All' 
+      ? await fetchProducts()
+      : await fetchProductsByCategory(selectedCategory);
+    
+    console.log('📦 All Retailer Products:', retailerProducts);
+    
+    // Fetch wholesaler products
+    const { fetchWholesalerProducts } = await import('@/services/productService');
+    const wholesalerProducts = await fetchWholesalerProducts();
+    
+    console.log('🏭 All Wholesaler Products:', wholesalerProducts);
+    
+    // Group retailer products by name and calculate total stock
+    const productStockMap = new Map<string, { totalStock: number, products: Product[] }>();
+    
+    retailerProducts.forEach(p => {
+      const key = p.name.toLowerCase().trim();
+      const existing = productStockMap.get(key);
+      
+      if (existing) {
+        existing.totalStock += (p.stock || 0);
+        existing.products.push(p);
+      } else {
+        productStockMap.set(key, {
+          totalStock: p.stock || 0,
+          products: [p]
+        });
+      }
+    });
+    
+    console.log('📊 Product Stock Map:', Object.fromEntries(productStockMap));
+    
+    // Filter wholesaler products
+    const availableWholesalerProducts = wholesalerProducts.filter(wp => {
+      const productKey = wp.name.toLowerCase().trim();
+      const retailerData = productStockMap.get(productKey);
+      
+      console.log(`🔍 Checking "${wp.name}":`, {
+        hasRetailerData: !!retailerData,
+        totalStock: retailerData?.totalStock || 0,
+        shouldShow: !retailerData || retailerData.totalStock === 0
+      });
+      
+      // No retailer has this product
+      if (!retailerData) {
+        console.log(`✅ Showing wholesaler "${wp.name}" - no retailer has it`);
+        return true;
+      }
+      
+      // All retailers have 0 stock
+      if (retailerData.totalStock === 0) {
+        console.log(`✅ Showing wholesaler "${wp.name}" - all retailers out of stock`);
+        return true;
+      }
+      
+      // Hide wholesaler version
+      console.log(`❌ Hiding wholesaler "${wp.name}" - retailers have ${retailerData.totalStock} in stock`);
+      return false;
+    });
+    
+    console.log('✨ Available Wholesaler Products:', availableWholesalerProducts);
+    
+    // Only include retailer products with stock > 0
+    const inStockRetailerProducts = retailerProducts.filter(p => (p.stock || 0) > 0);
+    
+    console.log('✅ In-Stock Retailer Products:', inStockRetailerProducts);
+    
+    // Combine
+    const allProducts = [...inStockRetailerProducts, ...availableWholesalerProducts];
+    
+    console.log('🎯 Final Products to Display:', allProducts);
+    
+    setProducts(allProducts);
+  } catch (error) {
+    console.error('Failed to load products:', error);
+    alert('Failed to load products');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const loadRecommendations = async () => {
     if (!lastPurchasedCategory) return;
@@ -220,14 +291,20 @@ const CustomerDashboard: React.FC = () => {
             {filteredProducts.map((product, index) => (
               <div
                 key={product.id}
-                className="animate-slide-up"
+                className="animate-slide-up relative"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <ProductCard
-                  product={product}
-                  onAddToCart={handleAddToCart}
-                />
+                {/* Show badge if product is from wholesaler (no retailer_id) */}
+                {!product.retailer_id && (
+                  <div className="absolute top-2 left-2 z-10 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-semibold shadow-lg">
+                    🏭 Direct from Wholesaler
               </div>
+  )}
+  <ProductCard
+    product={product}
+    onAddToCart={handleAddToCart}
+  />
+</div>
             ))}
           </div>
         ) : (

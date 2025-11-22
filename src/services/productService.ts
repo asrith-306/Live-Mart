@@ -77,8 +77,13 @@ export const fetchProducts = async (): Promise<Product[]> => {
       query = query.eq('retailer_id', user.id);
     } else if (role === 'wholesaler') {
       query = query.eq('wholesaler_id', user.id).is('retailer_id', null);
+    } else if (role === 'customer') {
+      // ✅ Customers should ONLY see retailer products (not wholesaler products directly)
+      query = query.not('retailer_id', 'is', null);
+    } else {
+      // ✅ For any other role or undefined role, show only retailer products
+      query = query.not('retailer_id', 'is', null);
     }
-    // Customers see all active products
     
     const { data, error } = await query.order('created_at', { ascending: false });
     
@@ -98,6 +103,7 @@ export const fetchProductsByCategory = async (category: string): Promise<Product
       .select('*')
       .eq('category', category)
       .eq('is_deleted', false)
+      .not('retailer_id', 'is', null)  // ✅ Only retailer products
       .gt('stock', 0)
       .order('created_at', { ascending: false });
     
@@ -263,7 +269,7 @@ export const addRetailerProductFromWholesaler = async (
           wholesaler_id: wholesalerProduct.wholesaler_id,
           cost_price: wholesalerProduct.price,
           is_deleted: false,
-          region: wholesalerProduct.region
+          //region: wholesalerProduct.region
         }])
         .select()
         .single();

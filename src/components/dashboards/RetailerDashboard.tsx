@@ -14,7 +14,7 @@ import {
 } from '@/services/productService';
 import ProductCard from '@/components/products/ProductCard';
 import ProductForm from '@/components/products/ProductForm';
-import { Package, ShoppingCart, Truck, MessageCircle } from 'lucide-react';
+import { Package, ShoppingCart, Truck, Eye, EyeOff, MessageCircle } from 'lucide-react';
 
 const RetailerDashboard = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -30,6 +30,7 @@ const RetailerDashboard = () => {
     sellingPrice: ''
   });
   const [submitting, setSubmitting] = useState(false);
+  const [proxyMode, setProxyMode] = useState(false); // New state for proxy availability
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,6 +43,9 @@ const RetailerDashboard = () => {
       if (viewMode === 'active') {
         const data = await fetchProducts();
         setProducts(data);
+        // Also load wholesaler products for proxy display
+        const wholesalerData = await fetchWholesalerProducts();
+        setWholesalerProducts(wholesalerData);
       } else if (viewMode === 'trash') {
         const data = await fetchDeletedProducts();
         setProducts(data);
@@ -251,6 +255,26 @@ const RetailerDashboard = () => {
     setEditingProduct(undefined);
   };
 
+  // Get combined products for proxy mode
+  const getCombinedProducts = () => {
+    if (!proxyMode) {
+      return products;
+    }
+
+    // Get IDs of products already in retailer inventory
+    const retailerProductIds = new Set(products.map(p => p.id));
+    
+    // Filter wholesaler products that aren't already in retailer inventory
+    const availableWholesalerProducts = wholesalerProducts.filter(
+      wp => !retailerProductIds.has(wp.id)
+    );
+
+    // Combine retailer products with available wholesaler products
+    return [...products, ...availableWholesalerProducts];
+  };
+
+  const displayProducts = getCombinedProducts();
+
   if (loading) {
     return <div className="p-8 text-center">Loading products...</div>;
   }
@@ -331,7 +355,7 @@ const RetailerDashboard = () => {
         </div>
       </div>
 
-      {/* Header with View Toggle */}
+      {/* Header with View Toggle and Proxy Mode */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
           <h1 className="text-3xl font-bold">Product Inventory</h1>
@@ -370,12 +394,45 @@ const RetailerDashboard = () => {
             </button>
           </div>
         </div>
+
+        {/* Proxy Availability Toggle (only show in active view) */}
+        {viewMode === 'active' && (
+          <button
+            onClick={() => setProxyMode(!proxyMode)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all ${
+              proxyMode
+                ? 'bg-green-500 text-white hover:bg-green-600'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            {proxyMode ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+            {proxyMode ? 'Proxy Mode: ON' : 'Proxy Mode: OFF'}
+          </button>
+        )}
       </div>
+
+      {/* Proxy Mode Info Banner */}
+      {viewMode === 'active' && proxyMode && (
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-start gap-3">
+            <Eye className="w-5 h-5 text-green-600 mt-0.5" />
+            <div>
+              <p className="text-green-800 font-semibold">
+                Proxy Availability Mode Active
+              </p>
+              <p className="text-green-700 text-sm mt-1">
+                Showing your inventory + available wholesaler products. Wholesaler products are marked with a "📦 Available via Wholesaler" badge. 
+                When customers order these items, they will be automatically sourced from the wholesaler.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Products Grid for Active View */}
       {viewMode === 'active' && (
         <>
-          {products.length === 0 && (
+          {displayProducts.length === 0 && (
             <div className="text-center mt-12">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 max-w-2xl mx-auto">
                 <div className="text-6xl mb-4">🏭</div>
@@ -394,18 +451,40 @@ const RetailerDashboard = () => {
               </div>
             </div>
           )}
-          {products.length > 0 && (
+          {displayProducts.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {products.map(product => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onEdit={handleEdit}
-                  onDelete={handleDeleteProduct}
-                  isRetailer={true}
-                  isTrashView={false}
-                />
-              ))}
+              {displayProducts.map(product => {
+                const isWholesalerProduct = !products.find(p => p.id === product.id);
+                return (
+                  <div key={product.id} className="relative">
+                    {/* Wholesaler badge for proxy products */}
+                    {isWholesalerProduct && (
+                      <div className="absolute top-2 left-2 z-10 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
+                        📦 Available via Wholesaler
+                      </div>
+                    )}
+                    <ProductCard
+                      product={product}
+                      onEdit={!isWholesalerProduct ? handleEdit : undefined}
+                      onDelete={!isWholesalerProduct ? handleDeleteProduct : undefined}
+                      onAddToCart={isWholesalerProduct ? () => handleAddFromWholesaler(product) : undefined}
+                      isRetailer={true}
+                      isTrashView={false}
+                    />
+                    {/* Add quick order button for wholesaler products */}
+                    {isWholesalerProduct && (
+                      <div className="absolute bottom-2 left-2 right-2">
+                        <button
+                          onClick={() => handleAddFromWholesaler(product)}
+                          className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm font-semibold"
+                        >
+                          Add to Inventory
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </>
