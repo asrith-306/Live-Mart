@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Star, ShoppingCart, Eye, X, Package } from 'lucide-react';
+import { Star, ShoppingCart, Eye, X, Package, Edit, Trash2, RotateCcw } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { Product, fetchProductReviews, ProductReview } from '../../services/productService';
 import ProductReviews from './ProductReviews';
@@ -7,10 +7,25 @@ import { useUserHasDeliveredOrder } from '../../hooks/useUserHasDeliveredOrder';
 
 interface ProductCardProps {
   product: Product;
-  onAddToCart: (product: Product) => void;
+  onAddToCart?: (product: Product) => void;
+  onEdit?: (product: Product) => void;
+  onDelete?: (id: string) => void;
+  onRestore?: (id: string) => void;
+  onPermanentDelete?: (id: string) => void;
+  isRetailer?: boolean;
+  isTrashView?: boolean;
 }
 
-function ProductCard({ product, onAddToCart }: ProductCardProps) {
+function ProductCard({ 
+  product, 
+  onAddToCart, 
+  onEdit,
+  onDelete,
+  onRestore,
+  onPermanentDelete,
+  isRetailer = false,
+  isTrashView = false 
+}: ProductCardProps) {
   const [showReviews, setShowReviews] = useState(false);
   const [averageRating, setAverageRating] = useState(0);
   const [reviewCount, setReviewCount] = useState(0);
@@ -44,6 +59,30 @@ function ProductCard({ product, onAddToCart }: ProductCardProps) {
     setShowReviews(false);
     // Reload stats in case a review was added
     loadReviewStats();
+  };
+
+  const handleEdit = () => {
+    if (onEdit) {
+      onEdit(product);
+    }
+  };
+
+  const handleDelete = () => {
+    if (onDelete && product.id) {
+      onDelete(product.id);
+    }
+  };
+
+  const handleRestore = () => {
+    if (onRestore && product.id) {
+      onRestore(product.id);
+    }
+  };
+
+  const handlePermanentDelete = () => {
+    if (onPermanentDelete && product.id) {
+      onPermanentDelete(product.id);
+    }
   };
 
   const renderStars = (rating: number) => {
@@ -85,6 +124,55 @@ function ProductCard({ product, onAddToCart }: ProductCardProps) {
               <ShoppingCart className="w-16 h-16" />
             </div>
           )}
+          
+          {/* Action buttons for retailer view */}
+          {isRetailer && !isTrashView && (
+            <div className="absolute top-2 left-2 flex gap-2">
+              {onEdit && (
+                <button
+                  onClick={handleEdit}
+                  className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-colors shadow-md"
+                  title="Edit Product"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={handleDelete}
+                  className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-md"
+                  title="Move to Trash"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Action buttons for trash view */}
+          {isRetailer && isTrashView && (
+            <div className="absolute top-2 left-2 flex gap-2">
+              {onRestore && (
+                <button
+                  onClick={handleRestore}
+                  className="bg-green-500 text-white p-2 rounded-full hover:bg-green-600 transition-colors shadow-md"
+                  title="Restore Product"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              )}
+              {onPermanentDelete && (
+                <button
+                  onClick={handlePermanentDelete}
+                  className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition-colors shadow-md"
+                  title="Delete Permanently"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
+
           {product.stock && product.stock < 10 && product.stock > 0 && (
             <span className="absolute top-2 right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-semibold shadow-md">
               Only {product.stock} left
@@ -143,15 +231,27 @@ function ProductCard({ product, onAddToCart }: ProductCardProps) {
                 <Eye className="w-4 h-4" />
                 Reviews
               </button>
-              <button
-                type="button"
-                onClick={() => onAddToCart(product)}
-                disabled={!product.stock || product.stock === 0}
-                className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2 px-3 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm font-medium shadow-md hover:shadow-lg"
-              >
-                <ShoppingCart className="w-4 h-4" />
-                Add to Cart
-              </button>
+              
+              {/* Show Add to Cart only for customers, not for retailer management */}
+              {!isRetailer && onAddToCart && (
+                <button
+                  type="button"
+                  onClick={() => onAddToCart(product)}
+                  disabled={!product.stock || product.stock === 0}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2 px-3 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm font-medium shadow-md hover:shadow-lg"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  Add to Cart
+                </button>
+              )}
+              
+              {/* Show management status for retailer in trash view */}
+              {isRetailer && isTrashView && (
+                <div className="flex-1 bg-red-50 text-red-700 py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-sm font-medium border border-red-200">
+                  <Trash2 className="w-4 h-4" />
+                  In Trash
+                </div>
+              )}
             </div>
           </div>
         </div>

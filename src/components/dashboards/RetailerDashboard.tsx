@@ -1,4 +1,4 @@
-// src/components/dashboards/RetailerDashboard.tsx
+// src/components/dashboards/RetailerDashboard.tsx - UPDATED WITH QUERY BUTTON
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -14,7 +14,7 @@ import {
 } from '@/services/productService';
 import ProductCard from '@/components/products/ProductCard';
 import ProductForm from '@/components/products/ProductForm';
-import { Package, ShoppingCart, Truck } from 'lucide-react';
+import { Package, ShoppingCart, Truck, MessageCircle } from 'lucide-react';
 
 const RetailerDashboard = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -73,7 +73,6 @@ const RetailerDashboard = () => {
       return;
     }
 
-    // Parse and validate inputs
     const quantityStr = orderForm.quantity.trim();
     const sellingPriceStr = orderForm.sellingPrice.trim();
 
@@ -107,7 +106,6 @@ const RetailerDashboard = () => {
       return;
     }
 
-    // Check required fields
     if (!selectedWholesalerProduct.id) {
       alert('Invalid product: missing product ID');
       console.error('Product missing ID:', selectedWholesalerProduct);
@@ -139,12 +137,10 @@ const RetailerDashboard = () => {
 
       console.log('✅ Product added successfully!');
       
-      // Close modal and reset form
       setShowAddFromWholesaler(false);
       setSelectedWholesalerProduct(null);
       setOrderForm({ quantity: '', sellingPrice: '' });
       
-      // Switch to active view
       setViewMode('active');
       
       alert('Product added to your inventory successfully!');
@@ -264,7 +260,7 @@ const RetailerDashboard = () => {
       {/* Quick Actions Banner */}
       <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-6 mb-6">
         <h2 className="text-white text-2xl font-bold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Manage Products */}
           <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-4 text-white">
             <div className="flex items-center gap-3 mb-2">
@@ -313,6 +309,23 @@ const RetailerDashboard = () => {
               className="w-full bg-white text-green-600 py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
             >
               Manage Delivery
+            </button>
+          </div>
+
+          {/* Customer Queries - NEW */}
+          <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-4 text-white">
+            <div className="flex items-center gap-3 mb-2">
+              <MessageCircle className="w-6 h-6" />
+              <h3 className="font-semibold text-lg">Queries</h3>
+            </div>
+            <p className="text-sm text-white text-opacity-90 mb-3">
+              Customer support queries
+            </p>
+            <button
+              onClick={() => navigate('/retailer/queries')}
+              className="w-full bg-white text-orange-600 py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
+            >
+              View Queries
             </button>
           </div>
         </div>
