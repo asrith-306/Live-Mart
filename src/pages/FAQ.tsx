@@ -189,7 +189,7 @@ const FAQ: React.FC = () => {
       id: 'payment-1',
       category: 'Payment',
       question: 'What payment methods do you accept?',
-      answer: 'We accept all major credit/debit cards, UPI, net banking, and digital wallets. Payment is processed securely through our payment gateway.',
+      answer: 'We accept all major credit/debit cards, UPI, net banking, digital wallets, and Cash on Delivery (COD). Payment is processed securely through our payment gateway.',
       actionButton: {
         text: 'Start Shopping',
         route: '/customer',
@@ -211,7 +211,7 @@ const FAQ: React.FC = () => {
       id: 'payment-3',
       category: 'Payment',
       question: 'When will I be charged?',
-      answer: 'Payment is processed immediately when you place your order. You\'ll receive a confirmation email with the payment receipt.',
+      answer: 'For online payments, payment is processed immediately when you place your order. For Cash on Delivery (COD), you\'ll pay when your order is delivered to you.',
       actionButton: {
         text: 'View Orders',
         route: '/orders',
@@ -222,7 +222,7 @@ const FAQ: React.FC = () => {
       id: 'payment-4',
       category: 'Payment',
       question: 'Do you offer Cash on Delivery (COD)?',
-      answer: 'Currently, we only accept online payments. This helps us process orders faster and ensures secure transactions.',
+      answer: 'Yes! We offer Cash on Delivery (COD) as a payment option. You can pay in cash when your order is delivered to your doorstep. Online payment options are also available for faster processing.',
       actionButton: {
         text: 'Shop Now',
         route: '/customer',
