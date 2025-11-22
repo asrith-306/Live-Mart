@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/utils/supabaseClient';
 import { Product } from '@/services/productService';
-import FeedbackForm from '@/components/FeedbackForm';
+import ProductReviews from '@/components/products/ProductReviews';
 import { useCart } from '@/context/CartContext';
 
 interface ProductWithRetailer extends Product {
@@ -34,11 +34,11 @@ const ProductDetailPage = () => {
   const [activeTab, setActiveTab] = useState('reviews');
   const [userId, setUserId] = useState<string | null>(null);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [userHasDeliveredOrder, setUserHasDeliveredOrder] = useState(false);
 
-  // Mock additional images (in real app, fetch from database)
   const productImages = product?.image_url ? [
     product.image_url,
-    product.image_url, // You can add more images here
+    product.image_url,
     product.image_url,
     product.image_url
   ] : [];
@@ -50,7 +50,22 @@ const ProductDetailPage = () => {
 
   const fetchUserInfo = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) setUserId(user.id);
+    if (user) {
+      setUserId(user.id);
+      // Check if user has a delivered order for this product
+      if (productId) {
+        const { data: orders } = await supabase
+          .from('orders')
+          .select(`id, delivery_status, order_items (product_id)`)
+          .eq('customer_id', user.id)
+          .eq('delivery_status', 'delivered');
+
+        const hasDelivered = orders?.some(order =>
+          order.order_items?.some((item: any) => item.product_id === productId)
+        ) || false;
+        setUserHasDeliveredOrder(hasDelivered);
+      }
+    }
   };
 
   const fetchProductDetails = async () => {
@@ -59,7 +74,6 @@ const ProductDetailPage = () => {
     try {
       setLoading(true);
 
-      // Fetch product details
       const { data: productData, error: productError } = await supabase
         .from('products')
         .select('*')
@@ -68,7 +82,6 @@ const ProductDetailPage = () => {
 
       if (productError) throw productError;
 
-      // Fetch retailer info for this product
       if (productData.retailer_id) {
         const { data: retailer } = await supabase
           .from('retailers')
@@ -82,7 +95,6 @@ const ProductDetailPage = () => {
           retailer_rating: retailer?.rating || 0
         });
 
-        // Fetch other retailers selling the same product (by name match)
         const { data: otherProducts } = await supabase
           .from('products')
           .select('id, retailer_id, price, stock')
@@ -137,11 +149,7 @@ const ProductDetailPage = () => {
 
   const StarRating = ({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'md' | 'lg' }) => {
     const stars = [];
-    const sizeClasses = {
-      sm: 'text-sm',
-      md: 'text-base',
-      lg: 'text-xl'
-    };
+    const sizeClasses = { sm: 'text-sm', md: 'text-base', lg: 'text-xl' };
     
     for (let i = 1; i <= 5; i++) {
       stars.push(
@@ -170,10 +178,7 @@ const ProductDetailPage = () => {
         <div className="text-center">
           <div className="text-6xl mb-4">😕</div>
           <h2 className="text-2xl font-bold mb-4">Product not found</h2>
-          <button
-            onClick={() => navigate('/')}
-            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-          >
+          <button onClick={() => navigate('/')} className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
             Back to Home
           </button>
         </div>
@@ -183,7 +188,6 @@ const ProductDetailPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Breadcrumb */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="text-sm text-gray-600">
@@ -198,28 +202,19 @@ const ProductDetailPage = () => {
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* LEFT: Product Images */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg p-6 shadow-sm">
-              {/* Main Image */}
               <div className="mb-4 bg-gray-100 rounded-lg overflow-hidden aspect-square flex items-center justify-center">
-                <img
-                  src={productImages[selectedImage] || product.image_url}
-                  alt={product.name}
-                  className="max-w-full max-h-full object-contain"
-                />
+                <img src={productImages[selectedImage] || product.image_url} alt={product.name} className="max-w-full max-h-full object-contain" />
               </div>
 
-              {/* Thumbnail Images */}
               {productImages.length > 1 && (
                 <div className="flex gap-2 overflow-x-auto">
                   {productImages.map((img, idx) => (
                     <button
                       key={idx}
                       onClick={() => setSelectedImage(idx)}
-                      className={`flex-shrink-0 w-16 h-16 rounded border-2 overflow-hidden transition-all ${
-                        selectedImage === idx ? 'border-orange-500 shadow-md' : 'border-gray-300 hover:border-gray-400'
-                      }`}
+                      className={`flex-shrink-0 w-16 h-16 rounded border-2 overflow-hidden transition-all ${selectedImage === idx ? 'border-orange-500 shadow-md' : 'border-gray-300 hover:border-gray-400'}`}
                     >
                       <img src={img} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
                     </button>
@@ -228,26 +223,17 @@ const ProductDetailPage = () => {
               )}
             </div>
 
-            {/* Product Details Tabs */}
             <div className="bg-white rounded-lg p-6 shadow-sm mt-4">
               <div className="flex border-b">
                 <button
                   onClick={() => setActiveTab('details')}
-                  className={`px-6 py-3 font-semibold transition-colors ${
-                    activeTab === 'details'
-                      ? 'text-orange-600 border-b-2 border-orange-600'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                  className={`px-6 py-3 font-semibold transition-colors ${activeTab === 'details' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-600 hover:text-gray-900'}`}
                 >
                   Product Details
                 </button>
                 <button
                   onClick={() => setActiveTab('reviews')}
-                  className={`px-6 py-3 font-semibold transition-colors ${
-                    activeTab === 'reviews'
-                      ? 'text-orange-600 border-b-2 border-orange-600'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                  className={`px-6 py-3 font-semibold transition-colors ${activeTab === 'reviews' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-600 hover:text-gray-900'}`}
                 >
                   Customer Reviews
                 </button>
@@ -258,9 +244,7 @@ const ProductDetailPage = () => {
                   <div className="space-y-4">
                     <div>
                       <h3 className="font-semibold text-lg mb-2">About this item</h3>
-                      <p className="text-gray-700 leading-relaxed">
-                        {product.description || 'No detailed description available.'}
-                      </p>
+                      <p className="text-gray-700 leading-relaxed">{product.description || 'No detailed description available.'}</p>
                     </div>
                     <div>
                       <h3 className="font-semibold text-lg mb-2">Specifications</h3>
@@ -275,9 +259,12 @@ const ProductDetailPage = () => {
                 )}
 
                 {activeTab === 'reviews' && userId && product.id && (
-                  <div>
-                    <FeedbackForm productId={product.id} userId={userId} />
-                  </div>
+                  <ProductReviews
+                    productId={product.id}
+                    productName={product.name}
+                    onClose={() => setActiveTab('details')}
+                    userHasDeliveredOrder={userHasDeliveredOrder}
+                  />
                 )}
 
                 {activeTab === 'reviews' && !userId && (
@@ -285,10 +272,7 @@ const ProductDetailPage = () => {
                     <div className="text-6xl mb-4">🔒</div>
                     <p className="text-xl font-semibold text-gray-800 mb-2">Login Required</p>
                     <p className="text-gray-600 mb-4">Please log in to view and submit reviews</p>
-                    <button
-                      onClick={() => navigate('/login')}
-                      className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:shadow-lg"
-                    >
+                    <button onClick={() => navigate('/login')} className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:shadow-lg">
                       Go to Login
                     </button>
                   </div>
@@ -297,13 +281,11 @@ const ProductDetailPage = () => {
             </div>
           </div>
 
-          {/* RIGHT: Product Info & Purchase */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg p-6 shadow-sm sticky top-4">
               <h1 className="text-2xl font-bold text-gray-900 mb-4">{product.name}</h1>
 
               <div className="border-t pt-4">
-                {/* Price */}
                 <div className="mb-4">
                   <div className="flex items-baseline gap-2 mb-1">
                     <span className="text-xs text-gray-600">Deal Price:</span>
@@ -313,7 +295,6 @@ const ProductDetailPage = () => {
                   </div>
                 </div>
 
-                {/* Stock Status */}
                 <div className="mb-4">
                   {product.stock > 0 ? (
                     <div className="text-green-700 font-semibold flex items-center gap-2">
@@ -325,7 +306,6 @@ const ProductDetailPage = () => {
                   )}
                 </div>
 
-                {/* Retailer Info */}
                 <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                   <div className="text-sm text-gray-600 mb-1">Sold by</div>
                   <div className="flex items-center justify-between">
@@ -339,71 +319,42 @@ const ProductDetailPage = () => {
                   </div>
                 </div>
 
-                {/* Quantity Selector */}
                 {product.stock > 0 && (
                   <div className="mb-4">
                     <label className="block text-sm font-semibold mb-2">Quantity:</label>
-                    <select
-                      value={quantity}
-                      onChange={(e) => setQuantity(Number(e.target.value))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    >
+                    <select value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500">
                       {[...Array(Math.min(product.stock, 10))].map((_, i) => (
-                        <option key={i + 1} value={i + 1}>
-                          {i + 1}
-                        </option>
+                        <option key={i + 1} value={i + 1}>{i + 1}</option>
                       ))}
                     </select>
                   </div>
                 )}
 
-                {/* Action Buttons */}
                 <div className="space-y-2">
                   <button
                     disabled={product.stock === 0}
                     onClick={handleAddToCart}
-                    className={`w-full py-3 rounded-lg font-semibold transition-colors ${
-                      product.stock > 0
-                        ? addedToCart
-                          ? 'bg-green-500 text-white'
-                          : 'bg-orange-500 hover:bg-orange-600 text-white'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
+                    className={`w-full py-3 rounded-lg font-semibold transition-colors ${product.stock > 0 ? addedToCart ? 'bg-green-500 text-white' : 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                   >
                     {addedToCart ? '✓ Added to Cart' : '🛒 Add to Cart'}
                   </button>
                   <button
                     disabled={product.stock === 0}
                     onClick={handleBuyNow}
-                    className={`w-full py-3 rounded-lg font-semibold transition-colors ${
-                      product.stock > 0
-                        ? 'bg-yellow-400 hover:bg-yellow-500 text-gray-900'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
+                    className={`w-full py-3 rounded-lg font-semibold transition-colors ${product.stock > 0 ? 'bg-yellow-400 hover:bg-yellow-500 text-gray-900' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                   >
                     ⚡ Buy Now
                   </button>
                 </div>
 
-                {/* Additional Info */}
                 <div className="mt-4 space-y-2 text-sm text-gray-700">
-                  <div className="flex items-center gap-2">
-                    <span>🚚</span>
-                    <span>Free delivery on orders over ₹500</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>↩️</span>
-                    <span>7-day easy returns</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>🛡️</span>
-                    <span>Secure payment options</span>
-                  </div>
+                  <div className="flex items-center gap-2"><span>🚚</span><span>Free delivery on orders over ₹500</span></div>
+                  <div className="flex items-center gap-2"><span>↩️</span><span>7-day easy returns</span></div>
+                  <div className="flex items-center gap-2"><span>🛡️</span><span>Secure payment options</span></div>
                 </div>
               </div>
             </div>
 
-            {/* Other Retailers */}
             {otherRetailers.length > 0 && (
               <div className="bg-white rounded-lg p-6 shadow-sm mt-4">
                 <h3 className="font-bold text-lg mb-4">Other Sellers</h3>
