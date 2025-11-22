@@ -1,4 +1,4 @@
-// src/App.tsx - FINAL VERSION WITH PROFILE
+// src/App.tsx - FINAL VERSION WITH PROFILE AND FAQ
 import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "./utils/supabaseClient";
@@ -24,6 +24,7 @@ import QueryManagement from "./components/QueryManagement";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import ProfilePage from "./pages/ProfilePage";
 import './index.css';
+import FAQ from './pages/FAQ';
 
 type UserRole = "customer" | "retailer" | "wholesaler" | "delivery_partner" | null;
 
@@ -56,6 +57,14 @@ function Navbar({ isLoggedIn, onLogout, userRole }: { isLoggedIn: boolean; onLog
           🛒 Live MART
         </button>
         <div className="flex gap-4 items-center">
+          {/* FAQ Link - Always visible */}
+          <button 
+            onClick={() => navigate('/faq')} 
+            className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold flex items-center gap-2"
+          >
+            ❓ FAQ
+          </button>
+
           {!isLoggedIn && (
             <>
               <button onClick={() => navigate('/login')} className="px-6 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold border border-white border-opacity-50">Sign In</button>
@@ -199,6 +208,9 @@ function App() {
           
           {/* Product Detail Page - accessible to everyone */}
           <Route path="/product/:productId" element={<ProductDetailPage />} />
+          
+          {/* FAQ Page - accessible to everyone */}
+          <Route path="/faq" element={<FAQ />} />
           
           {/* Profile Page - accessible to all logged-in users */}
           <Route path="/profile" element={<ProtectedRoute allowedRoles={["customer", "retailer", "wholesaler", "delivery_partner"]} userRole={userRole}><ProfilePage /></ProtectedRoute>} />
