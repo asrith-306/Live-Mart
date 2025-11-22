@@ -263,7 +263,7 @@ export const addRetailerProductFromWholesaler = async (
           wholesaler_id: wholesalerProduct.wholesaler_id,
           cost_price: wholesalerProduct.price,
           is_deleted: false,
-          region: wholesalerProduct.region
+          //region: wholesalerProduct.region
         }])
         .select()
         .single();
