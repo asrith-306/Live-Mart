@@ -19,7 +19,6 @@ const CustomerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCartModal, setShowCartModal] = useState(false);
   const [showAddedNotification, setShowAddedNotification] = useState(false);
@@ -30,6 +29,7 @@ const CustomerDashboard: React.FC = () => {
 
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
   const [minPrice, setMinPrice] = useState<string>('0');
   const [maxPrice, setMaxPrice] = useState<string>('100000');
@@ -40,17 +40,17 @@ const CustomerDashboard: React.FC = () => {
 
   const categories = [
     { name: 'All', icon: '🛍️', color: 'from-purple-500 to-pink-500' },
+    { name: 'Books & Stationery', icon: '📚', color: 'from-indigo-500 to-purple-500' },
     { name: 'Electronics', icon: '📱', color: 'from-blue-500 to-cyan-500' },
     { name: 'Clothing', icon: '👕', color: 'from-pink-500 to-rose-500' },
-    { name: 'Food', icon: '🍎', color: 'from-green-500 to-emerald-500' },
-    { name: 'Home', icon: '🏠', color: 'from-orange-500 to-amber-500' },
-    { name: 'Books', icon: '📚', color: 'from-indigo-500 to-purple-500' },
+    { name: 'Food & Beverages', icon: '🍎', color: 'from-green-500 to-emerald-500' },
+    { name: 'Groceries', icon: '🛒', color: 'from-orange-500 to-amber-500' },
     { name: 'Other', icon: '✨', color: 'from-gray-500 to-slate-500' }
   ];
 
   useEffect(() => {
     loadProducts();
-  }, [selectedCategory]);
+  }, []);
 
   useEffect(() => {
     const savedCategory = localStorage.getItem('lastPurchasedCategory');
@@ -69,9 +69,8 @@ const CustomerDashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      let retailerProducts = selectedCategory === 'All' 
-        ? await fetchProducts()
-        : await fetchProductsByCategory(selectedCategory);
+      // Load all products
+      const retailerProducts = await fetchProducts();
       
       const { fetchWholesalerProducts } = await import('@/services/productService');
       const wholesalerProducts = await fetchWholesalerProducts();
@@ -155,6 +154,7 @@ const CustomerDashboard: React.FC = () => {
   };
 
   const resetFilters = () => {
+    setSelectedCategory('All');
     setPriceRange([0, 100000]);
     setMinPrice('0');
     setMaxPrice('100000');
@@ -162,14 +162,21 @@ const CustomerDashboard: React.FC = () => {
     setSortBy('default');
   };
 
-  // Apply all filters
+  // Apply all filters including category
   const getFilteredAndSortedProducts = () => {
-    let filtered = products.filter(product =>
-      (product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-       product.description?.toLowerCase().includes(searchQuery.toLowerCase())) &&
-      product.price >= priceRange[0] &&
-      product.price <= priceRange[1]
-    );
+    let filtered = products.filter(product => {
+      // Category filter
+      const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
+      
+      // Search filter
+      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           product.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Price filter
+      const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
+      
+      return matchesCategory && matchesSearch && matchesPrice;
+    });
 
     // Stock filter
     if (stockFilter === 'in-stock') {
@@ -194,8 +201,9 @@ const CustomerDashboard: React.FC = () => {
   const cartItemCount = getCartCount();
   const cartTotal = getCartTotal();
 
-  // Calculate active filter count
+  // Calculate active filter count including category
   const activeFilterCount = 
+    (selectedCategory !== 'All' ? 1 : 0) +
     (priceRange[0] > 0 || priceRange[1] < 100000 ? 1 : 0) +
     (stockFilter !== 'all' ? 1 : 0) +
     (sortBy !== 'default' ? 1 : 0);
@@ -246,30 +254,6 @@ const CustomerDashboard: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-8 py-8">
-        {/* Category Filter */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Browse by Category</h2>
-          <div className="flex gap-3 flex-wrap">
-            {categories.map(category => (
-              <button
-                key={category.name}
-                onClick={() => setSelectedCategory(category.name)}
-                className={`group relative px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-xl ${
-                  selectedCategory === category.name
-                    ? `bg-gradient-to-r ${category.color} text-white shadow-lg`
-                    : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md'
-                }`}
-              >
-                <span className="text-2xl mr-2">{category.icon}</span>
-                {category.name}
-                {selectedCategory === category.name && (
-                  <div className="absolute inset-0 rounded-xl bg-white/20 animate-pulse"></div>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Smart Filters Bar */}
         <div className="mb-6 bg-white rounded-xl shadow-md p-4">
           <div className="flex items-center justify-between mb-4">
@@ -310,7 +294,30 @@ const CustomerDashboard: React.FC = () => {
 
           {/* Filter Options */}
           {showFilters && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-4 border-t">
+              {/* Category Filter */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  🏷️ Category
+                </label>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {categories.map(category => (
+                    <button
+                      key={category.name}
+                      onClick={() => setSelectedCategory(category.name)}
+                      className={`w-full px-4 py-2 rounded-lg text-left transition-all flex items-center gap-2 ${
+                        selectedCategory === category.name
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <span>{category.icon}</span>
+                      <span className="text-sm">{category.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Price Range Filter */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
@@ -437,6 +444,14 @@ const CustomerDashboard: React.FC = () => {
           {/* Active Filters Display */}
           {activeFilterCount > 0 && !showFilters && (
             <div className="flex gap-2 flex-wrap pt-2">
+              {selectedCategory !== 'All' && (
+                <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm flex items-center gap-1">
+                  🏷️ {selectedCategory}
+                  <button onClick={() => setSelectedCategory('All')} className="ml-1 hover:text-purple-900">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
               {(priceRange[0] > 0 || priceRange[1] < 100000) && (
                 <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
                   💰 ₹{priceRange[0]} - ₹{priceRange[1]}
@@ -497,14 +512,13 @@ const CustomerDashboard: React.FC = () => {
                 ? `We couldn't find any products matching "${searchQuery}"`
                 : activeFilterCount > 0
                 ? 'Try adjusting your filters'
-                : `No products available in the ${selectedCategory} category`
+                : 'No products available'
               }
             </p>
-            {(searchQuery || selectedCategory !== 'All' || activeFilterCount > 0) && (
+            {(searchQuery || activeFilterCount > 0) && (
               <button
                 onClick={() => {
                   setSearchQuery('');
-                  setSelectedCategory('All');
                   resetFilters();
                 }}
                 className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all transform hover:scale-105"
@@ -516,7 +530,7 @@ const CustomerDashboard: React.FC = () => {
         )}
       </div>
 
-      {/* Rest of the components remain the same */}
+      {/* Rest of components (notifications, recommendations, cart modal) remain the same... */}
       {showAddedNotification && (
         <div className="fixed top-24 right-8 z-50 animate-slide-in">
           <div className="bg-green-500 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3">
