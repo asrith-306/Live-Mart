@@ -347,10 +347,9 @@ const HomePage = ({ isLoggedIn = false }: HomePageProps) => {
                     Get Started Free
                   </Button>
                   <Button
-                    size="lg"
-                    variant="outline"
-                    onClick={() => navigate("/login")}
-                    className="border-2 border-white text-white hover:bg-white/10 text-lg px-8 py-6"
+                     size="lg"
+                      onClick={() => navigate("/login")}
+                      className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-6 shadow-xl hover:shadow-2xl transition-all"
                   >
                     Sign In
                   </Button>

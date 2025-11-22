@@ -17,14 +17,13 @@ interface Order {
   id: string;
   customer_id: string;
   total_price: number;
-  status: string;
   payment_method: string;
   payment_status: string;
   delivery_address: string;
   phone: string;
   created_at: string;
-  delivery_status?: string; // Added delivery_status field
-  estimated_delivery?: string; // Added estimated delivery time
+  delivery_status: string;
+  estimated_delivery?: string;
   order_items?: OrderItem[];
 }
 
@@ -66,59 +65,21 @@ function Orders() {
     }
   };
 
-  const getStatusColor = (status: string): string => {
-    const colors: Record<string, string> = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      confirmed: 'bg-blue-100 text-blue-800',
-      dispatched: 'bg-purple-100 text-purple-800',
-      delivered: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800',
+  const getStatusInfo = (deliveryStatus: string) => {
+    const statusMap: Record<string, { color: string; bgColor: string; icon: any; label: string }> = {
+      pending: { color: 'text-gray-800', bgColor: 'bg-gray-100', icon: Clock, label: 'Pending' },
+      confirmed: { color: 'text-blue-800', bgColor: 'bg-blue-100', icon: CheckCircle, label: 'Confirmed' },
+      preparing: { color: 'text-yellow-800', bgColor: 'bg-yellow-100', icon: Package, label: 'Preparing' },
+      out_for_delivery: { color: 'text-purple-800', bgColor: 'bg-purple-100', icon: Truck, label: 'Out for Delivery' },
+      delivered: { color: 'text-green-800', bgColor: 'bg-green-100', icon: CheckCircle, label: 'Delivered' },
+      cancelled: { color: 'text-red-800', bgColor: 'bg-red-100', icon: XCircle, label: 'Cancelled' }
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return statusMap[deliveryStatus] || statusMap.pending;
   };
 
-  // New function to get delivery status color and icon
-  const getDeliveryStatusInfo = (deliveryStatus?: string) => {
-    const statusMap: Record<string, { color: string; icon: any; label: string }> = {
-      pending: { 
-        color: 'bg-gray-100 text-gray-800', 
-        icon: Clock, 
-        label: 'Pending' 
-      },
-      confirmed: { 
-        color: 'bg-blue-100 text-blue-800', 
-        icon: CheckCircle, 
-        label: 'Confirmed' 
-      },
-      preparing: { 
-        color: 'bg-yellow-100 text-yellow-800', 
-        icon: Package, 
-        label: 'Preparing' 
-      },
-      out_for_delivery: { 
-        color: 'bg-purple-100 text-purple-800', 
-        icon: Truck, 
-        label: 'Out for Delivery' 
-      },
-      delivered: { 
-        color: 'bg-green-100 text-green-800', 
-        icon: CheckCircle, 
-        label: 'Delivered' 
-      },
-      cancelled: { 
-        color: 'bg-red-100 text-red-800', 
-        icon: XCircle, 
-        label: 'Cancelled' 
-      }
-    };
-
-    return statusMap[deliveryStatus || 'pending'] || statusMap.pending;
-  };
-
-  // Check if order can be tracked (has delivery status and is not delivered/cancelled)
   const canTrackOrder = (order: Order): boolean => {
     const trackableStatuses = ['confirmed', 'preparing', 'out_for_delivery'];
-    return trackableStatuses.includes(order.delivery_status || '');
+    return trackableStatuses.includes(order.delivery_status);
   };
 
   if (loading) {
@@ -138,15 +99,14 @@ function Orders() {
         <Package className="w-20 h-20 text-gray-400 mb-4" />
         <h1 className="text-3xl font-bold mb-4">No Orders Yet</h1>
         <p className="text-gray-600 mb-6">Start shopping to see your orders here</p>
-        <button
-          onClick={() => navigate('/customer')}
-          className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors font-semibold"
-        >
+        <button onClick={() => navigate('/customer')} className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors font-semibold">
           Start Shopping
         </button>
       </div>
     );
   }
+
+  console.log('Orders component rendering. Number of orders:', orders.length);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -155,9 +115,10 @@ function Orders() {
 
         <div className="space-y-6">
           {orders.map(order => {
-            const deliveryInfo = getDeliveryStatusInfo(order.delivery_status);
-            const DeliveryIcon = deliveryInfo.icon;
+            const statusInfo = getStatusInfo(order.delivery_status);
+            const StatusIcon = statusInfo.icon;
             const isTrackable = canTrackOrder(order);
+            const isDelivered = order.delivery_status === 'delivered';
 
             return (
               <div key={order.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
@@ -168,25 +129,14 @@ function Orders() {
                       <p className="font-semibold text-lg">Order #{order.id.slice(0, 8).toUpperCase()}</p>
                       <p className="text-sm text-blue-100 mt-1">
                         {new Date(order.created_at).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
+                          day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
                         })}
                       </p>
                     </div>
-                    <div className="flex gap-2 flex-col items-end">
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(order.status)} bg-white`}>
-                        {order.status.toUpperCase()}
-                      </span>
-                      {order.delivery_status && (
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${deliveryInfo.color} bg-white flex items-center gap-1`}>
-                          <DeliveryIcon className="w-3 h-3" />
-                          {deliveryInfo.label}
-                        </span>
-                      )}
-                    </div>
+                    <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${statusInfo.bgColor} ${statusInfo.color} flex items-center gap-1.5`}>
+                      <StatusIcon className="w-4 h-4" />
+                      {statusInfo.label}
+                    </span>
                   </div>
                 </div>
 
@@ -200,12 +150,14 @@ function Orders() {
                     </h3>
                     <div className="space-y-2">
                       {order.order_items?.map(item => (
-                        <div key={item.id} className="flex justify-between text-sm bg-gray-50 p-3 rounded">
-                          <span className="text-gray-700">
-                            <span className="font-medium">{item.product_name}</span>
-                            <span className="text-gray-500"> × {item.quantity}</span>
-                          </span>
-                          <span className="font-semibold text-gray-800">₹{(item.price * item.quantity).toFixed(2)}</span>
+                        <div key={item.id} className="bg-gray-50 p-3 rounded">
+                          <div className="flex justify-between text-sm mb-2">
+                            <span className="text-gray-700">
+                              <span className="font-medium">{item.product_name}</span>
+                              <span className="text-gray-500"> × {item.quantity}</span>
+                            </span>
+                            <span className="font-semibold text-gray-800">₹{(item.price * item.quantity).toFixed(2)}</span>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -225,24 +177,19 @@ function Orders() {
                       <span className="font-semibold text-gray-600 min-w-[100px]">💳 Payment:</span>
                       <span className="text-gray-800">
                         {order.payment_method} 
-                        <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
-                          order.payment_status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}>
+                        <span className={`ml-2 px-2 py-0.5 rounded text-xs ${order.payment_status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                           {order.payment_status}
                         </span>
                       </span>
                     </div>
-                    
                     <div className="flex items-start gap-2">
                       <span className="font-semibold text-gray-600 min-w-[100px]">📍 Delivery:</span>
                       <span className="text-gray-800">{order.delivery_address}</span>
                     </div>
-                    
                     <div className="flex items-start gap-2">
                       <span className="font-semibold text-gray-600 min-w-[100px]">📞 Phone:</span>
                       <span className="text-gray-800">{order.phone}</span>
                     </div>
-
                     {order.estimated_delivery && (
                       <div className="flex items-start gap-2">
                         <span className="font-semibold text-gray-600 min-w-[100px]">⏰ ETA:</span>
@@ -264,13 +211,14 @@ function Orders() {
                     </div>
                   )}
 
-                  {order.delivery_status === 'delivered' && (
+                  {/* Delivered Section */}
+                  {isDelivered && (
                     <div className="mt-6 pt-4 border-t border-gray-200">
                       <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
                         <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
                         <div>
                           <p className="font-semibold text-green-800">Order Delivered!</p>
-                          <p className="text-sm text-green-700">Thank you for shopping with us.</p>
+                          <p className="text-sm text-green-700">Thank you for shopping with us. You can review products from the shop page.</p>
                         </div>
                       </div>
                     </div>

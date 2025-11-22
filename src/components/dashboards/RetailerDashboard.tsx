@@ -14,7 +14,7 @@ import {
 } from '@/services/productService';
 import ProductCard from '@/components/products/ProductCard';
 import ProductForm from '@/components/products/ProductForm';
-import { Package, ShoppingCart, Truck } from 'lucide-react';
+import { Package, ShoppingCart, Truck, Eye, EyeOff } from 'lucide-react';
 
 const RetailerDashboard = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -29,6 +29,8 @@ const RetailerDashboard = () => {
     quantity: '',
     sellingPrice: ''
   });
+  const [submitting, setSubmitting] = useState(false);
+  const [proxyMode, setProxyMode] = useState(false); // New state for proxy availability
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -41,6 +43,9 @@ const RetailerDashboard = () => {
       if (viewMode === 'active') {
         const data = await fetchProducts();
         setProducts(data);
+        // Also load wholesaler products for proxy display
+        const wholesalerData = await fetchWholesalerProducts();
+        setWholesalerProducts(wholesalerData);
       } else if (viewMode === 'trash') {
         const data = await fetchDeletedProducts();
         setProducts(data);
@@ -57,6 +62,7 @@ const RetailerDashboard = () => {
   };
 
   const handleAddFromWholesaler = (product: Product) => {
+    console.log('Opening modal for product:', product);
     setSelectedWholesalerProduct(product);
     setOrderForm({
       quantity: '',
@@ -66,40 +72,93 @@ const RetailerDashboard = () => {
   };
 
   const handleConfirmAddFromWholesaler = async () => {
-    if (!selectedWholesalerProduct) return;
-
-    const quantity = parseInt(orderForm.quantity);
-    const sellingPrice = parseFloat(orderForm.sellingPrice);
-
-    if (!quantity || quantity <= 0) {
-      alert('Please enter a valid quantity');
+    if (!selectedWholesalerProduct) {
+      alert('No product selected');
       return;
     }
 
-    if (!sellingPrice || sellingPrice <= 0) {
-      alert('Please enter a valid selling price');
+    const quantityStr = orderForm.quantity.trim();
+    const sellingPriceStr = orderForm.sellingPrice.trim();
+
+    if (!quantityStr) {
+      alert('Please enter a quantity');
       return;
     }
 
-    if (quantity > selectedWholesalerProduct.stock) {
-      alert(`Only ${selectedWholesalerProduct.stock} units available`);
+    if (!sellingPriceStr) {
+      alert('Please enter a selling price');
+      return;
+    }
+
+    const quantity = parseInt(quantityStr, 10);
+    const sellingPrice = parseFloat(sellingPriceStr);
+
+    console.log('Parsed values:', { quantity, sellingPrice, isNaNQty: isNaN(quantity), isNaNPrice: isNaN(sellingPrice) });
+
+    if (isNaN(quantity) || quantity <= 0) {
+      alert('Please enter a valid quantity (must be a positive number)');
+      return;
+    }
+
+    if (isNaN(sellingPrice) || sellingPrice <= 0) {
+      alert('Please enter a valid selling price (must be a positive number)');
+      return;
+    }
+
+    if (!selectedWholesalerProduct.stock || quantity > selectedWholesalerProduct.stock) {
+      alert(`Only ${selectedWholesalerProduct.stock || 0} units available`);
+      return;
+    }
+
+    if (!selectedWholesalerProduct.id) {
+      alert('Invalid product: missing product ID');
+      console.error('Product missing ID:', selectedWholesalerProduct);
+      return;
+    }
+
+    if (!selectedWholesalerProduct.wholesaler_id) {
+      alert('Invalid product: missing wholesaler ID');
+      console.error('Product missing wholesaler_id:', selectedWholesalerProduct);
       return;
     }
 
     try {
+      setSubmitting(true);
+      console.log('Starting order process:', {
+        productId: selectedWholesalerProduct.id,
+        productName: selectedWholesalerProduct.name,
+        wholesalerId: selectedWholesalerProduct.wholesaler_id,
+        quantity,
+        sellingPrice,
+        wholesalerPrice: selectedWholesalerProduct.price
+      });
+
       await addRetailerProductFromWholesaler(
         selectedWholesalerProduct,
         quantity,
         sellingPrice
       );
+
+      console.log('✅ Product added successfully!');
+      
       setShowAddFromWholesaler(false);
       setSelectedWholesalerProduct(null);
       setOrderForm({ quantity: '', sellingPrice: '' });
+      
       setViewMode('active');
+      
       alert('Product added to your inventory successfully!');
-    } catch (error) {
-      console.error('Failed to add product:', error);
-      alert('Failed to add product. Check console for details.');
+    } catch (error: any) {
+      console.error('❌ Failed to add product:', error);
+      console.error('Error message:', error?.message);
+      console.error('Error details:', error?.details);
+      console.error('Error hint:', error?.hint);
+      console.error('Error code:', error?.code);
+      
+      const errorMessage = error?.message || error?.details || 'Unknown error occurred';
+      alert(`Failed to add product: ${errorMessage}\n\nCheck console for more details.`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -196,6 +255,26 @@ const RetailerDashboard = () => {
     setEditingProduct(undefined);
   };
 
+  // Get combined products for proxy mode
+  const getCombinedProducts = () => {
+    if (!proxyMode) {
+      return products;
+    }
+
+    // Get IDs of products already in retailer inventory
+    const retailerProductIds = new Set(products.map(p => p.id));
+    
+    // Filter wholesaler products that aren't already in retailer inventory
+    const availableWholesalerProducts = wholesalerProducts.filter(
+      wp => !retailerProductIds.has(wp.id)
+    );
+
+    // Combine retailer products with available wholesaler products
+    return [...products, ...availableWholesalerProducts];
+  };
+
+  const displayProducts = getCombinedProducts();
+
   if (loading) {
     return <div className="p-8 text-center">Loading products...</div>;
   }
@@ -259,7 +338,7 @@ const RetailerDashboard = () => {
         </div>
       </div>
 
-      {/* Header with View Toggle */}
+      {/* Header with View Toggle and Proxy Mode */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
           <h1 className="text-3xl font-bold">Product Inventory</h1>
@@ -299,13 +378,44 @@ const RetailerDashboard = () => {
           </div>
         </div>
 
-        {/* Note: No Add Product button - retailers can only source from wholesalers */}
+        {/* Proxy Availability Toggle (only show in active view) */}
+        {viewMode === 'active' && (
+          <button
+            onClick={() => setProxyMode(!proxyMode)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all ${
+              proxyMode
+                ? 'bg-green-500 text-white hover:bg-green-600'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            {proxyMode ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+            {proxyMode ? 'Proxy Mode: ON' : 'Proxy Mode: OFF'}
+          </button>
+        )}
       </div>
+
+      {/* Proxy Mode Info Banner */}
+      {viewMode === 'active' && proxyMode && (
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-start gap-3">
+            <Eye className="w-5 h-5 text-green-600 mt-0.5" />
+            <div>
+              <p className="text-green-800 font-semibold">
+                Proxy Availability Mode Active
+              </p>
+              <p className="text-green-700 text-sm mt-1">
+                Showing your inventory + available wholesaler products. Wholesaler products are marked with a "📦 Available via Wholesaler" badge. 
+                When customers order these items, they will be automatically sourced from the wholesaler.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Products Grid for Active View */}
       {viewMode === 'active' && (
         <>
-          {products.length === 0 && (
+          {displayProducts.length === 0 && (
             <div className="text-center mt-12">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 max-w-2xl mx-auto">
                 <div className="text-6xl mb-4">🏭</div>
@@ -324,18 +434,40 @@ const RetailerDashboard = () => {
               </div>
             </div>
           )}
-          {products.length > 0 && (
+          {displayProducts.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {products.map(product => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onEdit={handleEdit}
-                  onDelete={handleDeleteProduct}
-                  isRetailer={true}
-                  isTrashView={false}
-                />
-              ))}
+              {displayProducts.map(product => {
+                const isWholesalerProduct = !products.find(p => p.id === product.id);
+                return (
+                  <div key={product.id} className="relative">
+                    {/* Wholesaler badge for proxy products */}
+                    {isWholesalerProduct && (
+                      <div className="absolute top-2 left-2 z-10 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
+                        📦 Available via Wholesaler
+                      </div>
+                    )}
+                    <ProductCard
+                      product={product}
+                      onEdit={!isWholesalerProduct ? handleEdit : undefined}
+                      onDelete={!isWholesalerProduct ? handleDeleteProduct : undefined}
+                      onAddToCart={isWholesalerProduct ? () => handleAddFromWholesaler(product) : undefined}
+                      isRetailer={true}
+                      isTrashView={false}
+                    />
+                    {/* Add quick order button for wholesaler products */}
+                    {isWholesalerProduct && (
+                      <div className="absolute bottom-2 left-2 right-2">
+                        <button
+                          onClick={() => handleAddFromWholesaler(product)}
+                          className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm font-semibold"
+                        >
+                          Add to Inventory
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </>
@@ -435,31 +567,45 @@ const RetailerDashboard = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Quantity to Order
+                  Quantity to Order *
                 </label>
                 <input
                   type="number"
                   min="1"
                   max={selectedWholesalerProduct.stock}
                   value={orderForm.quantity}
-                  onChange={(e) => setOrderForm({...orderForm, quantity: e.target.value})}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d+$/.test(value)) {
+                      setOrderForm({...orderForm, quantity: value});
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter quantity"
+                  required
+                  disabled={submitting}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Your Selling Price (₹)
+                  Your Selling Price (₹) *
                 </label>
                 <input
                   type="number"
                   step="0.01"
-                  min="0"
+                  min="0.01"
                   value={orderForm.sellingPrice}
-                  onChange={(e) => setOrderForm({...orderForm, sellingPrice: e.target.value})}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      setOrderForm({...orderForm, sellingPrice: value});
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter your selling price"
+                  required
+                  disabled={submitting}
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Cost: ₹{selectedWholesalerProduct.price} | 
@@ -495,9 +641,14 @@ const RetailerDashboard = () => {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={handleConfirmAddFromWholesaler}
-                className="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                disabled={submitting}
+                className={`flex-1 py-2 rounded-lg transition-colors ${
+                  submitting 
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                }`}
               >
-                Confirm & Add
+                {submitting ? 'Processing...' : 'Confirm & Add'}
               </button>
               <button
                 onClick={() => {
@@ -505,7 +656,12 @@ const RetailerDashboard = () => {
                   setSelectedWholesalerProduct(null);
                   setOrderForm({ quantity: '', sellingPrice: '' });
                 }}
-                className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                disabled={submitting}
+                className={`flex-1 py-2 rounded-lg transition-colors ${
+                  submitting
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                }`}
               >
                 Cancel
               </button>

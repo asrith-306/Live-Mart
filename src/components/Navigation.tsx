@@ -7,7 +7,9 @@ import {
   X,
   Home,
   Package,
-  LogOut
+  LogOut,
+  LogIn,
+  UserPlus
 } from "lucide-react";
 
 interface NavigationProps {
@@ -24,6 +26,7 @@ const Navigation = ({
 
   const handleLogout = () => {
     onLogout();
+    setIsMobileMenuOpen(false);
     navigate("/");
   };
 
@@ -59,7 +62,31 @@ const Navigation = ({
               Products
             </Link>
 
-            {isLoggedIn ? (
+            {/* Show Login and Sign Up when NOT logged in */}
+            {!isLoggedIn && (
+              <>
+                <Link to="/login">
+                  <Button
+                    variant="outline"
+                    className="border-2 border-white text-white hover:bg-white/10"
+                  >
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Sign In
+                  </Button>
+                </Link>
+                <Link to="/signup">
+                  <Button
+                    className="bg-yellow-400 text-gray-900 hover:bg-yellow-500 font-bold"
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Sign Up
+                  </Button>
+                </Link>
+              </>
+            )}
+
+            {/* Show Logout when logged in */}
+            {isLoggedIn && (
               <Button
                 onClick={handleLogout}
                 variant="destructive"
@@ -68,22 +95,6 @@ const Navigation = ({
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
               </Button>
-            ) : (
-              <>
-                <Link 
-                  to="/login" 
-                  className="text-white hover:text-white/80 transition-colors font-medium"
-                >
-                  Login
-                </Link>
-                <Link to="/signup">
-                  <Button
-                    className="bg-yellow-400 text-gray-900 hover:bg-yellow-500 font-bold"
-                  >
-                    Sign Up
-                  </Button>
-                </Link>
-              </>
             )}
           </div>
 
@@ -123,37 +134,40 @@ const Navigation = ({
               <span className="font-medium">Products</span>
             </Link>
 
-            {isLoggedIn ? (
+            {/* Show Login and Sign Up when NOT logged in */}
+            {!isLoggedIn && (
+              <div className="pt-2 space-y-2 border-t border-white/10">
+                <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-3 border-2 border-white text-white hover:bg-white/10"
+                  >
+                    <LogIn className="h-5 w-5" />
+                    Sign In
+                  </Button>
+                </Link>
+                <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button
+                    className="w-full justify-start gap-3 bg-yellow-400 text-gray-900 hover:bg-yellow-500 font-bold"
+                  >
+                    <UserPlus className="h-5 w-5" />
+                    Sign Up
+                  </Button>
+                </Link>
+              </div>
+            )}
+
+            {/* Show Logout when logged in */}
+            {isLoggedIn && (
               <div className="pt-2 border-t border-white/10">
                 <Button
-                  onClick={() => {
-                    handleLogout();
-                    setIsMobileMenuOpen(false);
-                  }}
+                  onClick={handleLogout}
                   variant="destructive"
                   className="w-full justify-start gap-3 bg-red-500 hover:bg-red-600"
                 >
                   <LogOut className="h-5 w-5" />
                   Logout
                 </Button>
-              </div>
-            ) : (
-              <div className="pt-2 space-y-2 border-t border-white/10">
-                <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button
-                    variant="outline"
-                    className="w-full border-2 border-white text-white hover:bg-white/10"
-                  >
-                    Login
-                  </Button>
-                </Link>
-                <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button
-                    className="w-full bg-yellow-400 text-gray-900 hover:bg-yellow-500 font-bold"
-                  >
-                    Sign Up
-                  </Button>
-                </Link>
               </div>
             )}
           </div>
