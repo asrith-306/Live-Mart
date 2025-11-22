@@ -302,11 +302,11 @@ const ProfilePage = () => {
 
   const getRoleColor = () => {
     switch (profile?.role) {
-      case 'customer': return 'from-blue-500 to-cyan-500';
-      case 'retailer': return 'from-purple-500 to-pink-500';
-      case 'wholesaler': return 'from-green-500 to-emerald-500';
-      case 'delivery_partner': return 'from-orange-500 to-amber-500';
-      default: return 'from-gray-500 to-slate-500';
+      case 'customer': return 'from-[#4A9FBE] to-[#5AA5B0]';
+      case 'retailer': return 'from-[#D97B7B] to-[#E59595]';
+      case 'wholesaler': return 'from-[#5FA889] to-[#7DBFA0]';
+      case 'delivery_partner': return 'from-[#D4A855] to-[#D97B7B]';
+      default: return 'from-[#6B7A8F] to-[#4A5568]';
     }
   };
 
@@ -329,22 +329,22 @@ const ProfilePage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-[#EDF2F7] dark:bg-[#1A2332] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4A9FBE] dark:border-[#6BB3CF]"></div>
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-gray-600">Profile not found</p>
+      <div className="min-h-screen bg-[#EDF2F7] dark:bg-[#1A2332] flex items-center justify-center">
+        <p className="text-[#6B7A8F] dark:text-[#8A99AA]">Profile not found</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#F2F4F6] via-[#EDF2F7] to-[#EEF5F7] dark:bg-gradient-to-br dark:from-[#1A2332] dark:via-[#1F2937] dark:to-[#1A2332] py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Profile Header */}
         <div className={`bg-gradient-to-r ${getRoleColor()} rounded-2xl shadow-xl p-8 mb-6 text-white`}>
@@ -371,10 +371,10 @@ const ProfilePage = () => {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingImage}
-                className="absolute bottom-0 right-0 bg-white text-gray-800 p-2 rounded-full shadow-lg hover:bg-gray-100 transition-all opacity-0 group-hover:opacity-100"
+                className="absolute bottom-0 right-0 bg-[#FAFBFC] dark:bg-[#242D3C] text-[#2C3847] dark:text-[#E5E9EF] p-2 rounded-full shadow-lg hover:bg-[#EDF2F7] dark:hover:bg-[#3A4555] transition-all opacity-0 group-hover:opacity-100"
               >
                 {uploadingImage ? (
-                  <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-[#6B7A8F] border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <Camera className="w-4 h-4" />
                 )}
@@ -402,7 +402,7 @@ const ProfilePage = () => {
               </button>
             ) : (
               <div className="flex gap-2">
-                <button onClick={handleSave} disabled={saving} className="bg-white text-green-600 hover:bg-green-50 px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all disabled:opacity-50">
+                <button onClick={handleSave} disabled={saving} className="bg-[#FAFBFC] dark:bg-[#242D3C] text-[#5FA889] dark:text-[#B8E6D5] hover:bg-[#D9EDE5] dark:hover:bg-[#3A4555] px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all disabled:opacity-50">
                   <Save className="w-5 h-5" /> {saving ? 'Saving...' : 'Save'}
                 </button>
                 <button onClick={() => { setEditing(false); setFormData(profile); }} className="bg-white/20 hover:bg-white/30 px-4 py-3 rounded-xl transition-all">
@@ -416,65 +416,65 @@ const ProfilePage = () => {
         {/* Profile Details Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Basic Information */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <User className="w-5 h-5 text-blue-500" /> Basic Information
+          <div className="bg-[#FAFBFC] dark:bg-[#242D3C] rounded-xl shadow-lg p-6">
+            <h2 className="text-xl font-bold text-[#2C3847] dark:text-[#E5E9EF] mb-4 flex items-center gap-2">
+              <User className="w-5 h-5 text-[#4A9FBE] dark:text-[#6BB3CF]" /> Basic Information
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Full Name</label>
+                <label className="block text-sm font-medium text-[#6B7A8F] dark:text-[#8A99AA] mb-1">Full Name</label>
                 {editing ? (
-                  <input type="text" value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                  <input type="text" value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-2 border border-[#D8DEE6] dark:border-[#3A4555] rounded-lg bg-[#FAFBFC] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF] focus:ring-2 focus:ring-[rgba(74,159,190,0.3)] focus:border-[#4A9FBE] dark:focus:border-[#6BB3CF]" />
                 ) : (
-                  <p className="text-gray-800 font-medium">{profile.name}</p>
+                  <p className="text-[#2C3847] dark:text-[#E5E9EF] font-medium">{profile.name}</p>
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1"><Mail className="w-4 h-4 inline mr-1" />Email</label>
-                <p className="text-gray-800">{profile.email}</p>
-                <p className="text-xs text-gray-500">Email cannot be changed</p>
+                <label className="block text-sm font-medium text-[#6B7A8F] dark:text-[#8A99AA] mb-1"><Mail className="w-4 h-4 inline mr-1" />Email</label>
+                <p className="text-[#2C3847] dark:text-[#E5E9EF]">{profile.email}</p>
+                <p className="text-xs text-[#6B7A8F] dark:text-[#8A99AA]">Email cannot be changed</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1"><Phone className="w-4 h-4 inline mr-1" />Phone</label>
+                <label className="block text-sm font-medium text-[#6B7A8F] dark:text-[#8A99AA] mb-1"><Phone className="w-4 h-4 inline mr-1" />Phone</label>
                 {editing ? (
-                  <input type="tel" value={formData.phone || ''} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="Enter phone" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                  <input type="tel" value={formData.phone || ''} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="Enter phone" className="w-full px-4 py-2 border border-[#D8DEE6] dark:border-[#3A4555] rounded-lg bg-[#FAFBFC] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF] focus:ring-2 focus:ring-[rgba(74,159,190,0.3)] focus:border-[#4A9FBE] dark:focus:border-[#6BB3CF]" />
                 ) : (
-                  <p className="text-gray-800">{profile.phone || 'Not provided'}</p>
+                  <p className="text-[#2C3847] dark:text-[#E5E9EF]">{profile.phone || 'Not provided'}</p>
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1"><MapPin className="w-4 h-4 inline mr-1" />Address</label>
+                <label className="block text-sm font-medium text-[#6B7A8F] dark:text-[#8A99AA] mb-1"><MapPin className="w-4 h-4 inline mr-1" />Address</label>
                 {editing ? (
-                  <textarea value={formData.address || ''} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="Enter address" rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                  <textarea value={formData.address || ''} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="Enter address" rows={2} className="w-full px-4 py-2 border border-[#D8DEE6] dark:border-[#3A4555] rounded-lg bg-[#FAFBFC] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF] focus:ring-2 focus:ring-[rgba(74,159,190,0.3)] focus:border-[#4A9FBE] dark:focus:border-[#6BB3CF]" />
                 ) : (
-                  <p className="text-gray-800">{profile.address || 'Not provided'}</p>
+                  <p className="text-[#2C3847] dark:text-[#E5E9EF]">{profile.address || 'Not provided'}</p>
                 )}
               </div>
             </div>
           </div>
 
           {/* Role-Specific Info */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">{getRoleIcon()} {getRoleLabel()} Details</h2>
+          <div className="bg-[#FAFBFC] dark:bg-[#242D3C] rounded-xl shadow-lg p-6">
+            <h2 className="text-xl font-bold text-[#2C3847] dark:text-[#E5E9EF] mb-4 flex items-center gap-2">{getRoleIcon()} {getRoleLabel()} Details</h2>
             <div className="space-y-4">
               {(profile.role === 'retailer' || profile.role === 'wholesaler') && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Business Name</label>
-                    {editing ? <input type="text" value={formData.business_name || ''} onChange={(e) => setFormData({ ...formData, business_name: e.target.value })} className="w-full px-4 py-2 border rounded-lg" /> : <p className="text-gray-800">{profile.business_name || 'Not provided'}</p>}
+                    <label className="block text-sm font-medium text-[#6B7A8F] dark:text-[#8A99AA] mb-1">Business Name</label>
+                    {editing ? <input type="text" value={formData.business_name || ''} onChange={(e) => setFormData({ ...formData, business_name: e.target.value })} className="w-full px-4 py-2 border border-[#D8DEE6] dark:border-[#3A4555] rounded-lg bg-[#FAFBFC] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF]" /> : <p className="text-[#2C3847] dark:text-[#E5E9EF]">{profile.business_name || 'Not provided'}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">GST Number</label>
-                    {editing ? <input type="text" value={formData.gst_number || ''} onChange={(e) => setFormData({ ...formData, gst_number: e.target.value })} className="w-full px-4 py-2 border rounded-lg" /> : <p className="text-gray-800">{profile.gst_number || 'Not provided'}</p>}
+                    <label className="block text-sm font-medium text-[#6B7A8F] dark:text-[#8A99AA] mb-1">GST Number</label>
+                    {editing ? <input type="text" value={formData.gst_number || ''} onChange={(e) => setFormData({ ...formData, gst_number: e.target.value })} className="w-full px-4 py-2 border border-[#D8DEE6] dark:border-[#3A4555] rounded-lg bg-[#FAFBFC] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF]" /> : <p className="text-[#2C3847] dark:text-[#E5E9EF]">{profile.gst_number || 'Not provided'}</p>}
                   </div>
                 </>
               )}
               {profile.role === 'delivery_partner' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Vehicle Type</label>
+                    <label className="block text-sm font-medium text-[#6B7A8F] dark:text-[#8A99AA] mb-1">Vehicle Type</label>
                     {editing ? (
-                      <select value={formData.vehicle_type || ''} onChange={(e) => setFormData({ ...formData, vehicle_type: e.target.value })} className="w-full px-4 py-2 border rounded-lg">
+                      <select value={formData.vehicle_type || ''} onChange={(e) => setFormData({ ...formData, vehicle_type: e.target.value })} className="w-full px-4 py-2 border border-[#D8DEE6] dark:border-[#3A4555] rounded-lg bg-[#FAFBFC] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF]">
                         <option value="">Select</option>
                         <option value="bicycle">Bicycle</option>
                         <option value="motorcycle">Motorcycle</option>
@@ -482,25 +482,25 @@ const ProfilePage = () => {
                         <option value="car">Car</option>
                         <option value="van">Van</option>
                       </select>
-                    ) : <p className="text-gray-800 capitalize">{profile.vehicle_type || 'Not provided'}</p>}
+                    ) : <p className="text-[#2C3847] dark:text-[#E5E9EF] capitalize">{profile.vehicle_type || 'Not provided'}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Vehicle Number</label>
-                    {editing ? <input type="text" value={formData.vehicle_number || ''} onChange={(e) => setFormData({ ...formData, vehicle_number: e.target.value })} className="w-full px-4 py-2 border rounded-lg" /> : <p className="text-gray-800">{profile.vehicle_number || 'Not provided'}</p>}
+                    <label className="block text-sm font-medium text-[#6B7A8F] dark:text-[#8A99AA] mb-1">Vehicle Number</label>
+                    {editing ? <input type="text" value={formData.vehicle_number || ''} onChange={(e) => setFormData({ ...formData, vehicle_number: e.target.value })} className="w-full px-4 py-2 border border-[#D8DEE6] dark:border-[#3A4555] rounded-lg bg-[#FAFBFC] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF]" /> : <p className="text-[#2C3847] dark:text-[#E5E9EF]">{profile.vehicle_number || 'Not provided'}</p>}
                   </div>
                 </>
               )}
               {profile.role === 'customer' && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600 mb-3">Quick Stats</p>
+                <div className="bg-[#EDF2F7] dark:bg-[#1A2332] rounded-lg p-4">
+                  <p className="text-sm text-[#6B7A8F] dark:text-[#8A99AA] mb-3">Quick Stats</p>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-3 bg-white rounded-lg shadow-sm">
-                      <p className="text-2xl font-bold text-blue-600">{orderStats.totalOrders}</p>
-                      <p className="text-xs text-gray-500">Total Orders</p>
+                    <div className="text-center p-3 bg-[#FAFBFC] dark:bg-[#242D3C] rounded-lg shadow-sm">
+                      <p className="text-2xl font-bold text-[#4A9FBE] dark:text-[#6BB3CF]">{orderStats.totalOrders}</p>
+                      <p className="text-xs text-[#6B7A8F] dark:text-[#8A99AA]">Total Orders</p>
                     </div>
-                    <div className="text-center p-3 bg-white rounded-lg shadow-sm">
-                      <p className="text-2xl font-bold text-green-600">₹{orderStats.totalSpent.toFixed(0)}</p>
-                      <p className="text-xs text-gray-500">Total Spent</p>
+                    <div className="text-center p-3 bg-[#FAFBFC] dark:bg-[#242D3C] rounded-lg shadow-sm">
+                      <p className="text-2xl font-bold text-[#5FA889] dark:text-[#7DBFA0]">₹{orderStats.totalSpent.toFixed(0)}</p>
+                      <p className="text-xs text-[#6B7A8F] dark:text-[#8A99AA]">Total Spent</p>
                     </div>
                   </div>
                 </div>
@@ -510,16 +510,16 @@ const ProfilePage = () => {
         </div>
 
         {/* Account Actions */}
-        <div className="mt-6 bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Account Actions</h2>
+        <div className="mt-6 bg-[#FAFBFC] dark:bg-[#242D3C] rounded-xl shadow-lg p-6">
+          <h2 className="text-xl font-bold text-[#2C3847] dark:text-[#E5E9EF] mb-4">Account Actions</h2>
           <div className="flex flex-wrap gap-4">
-            <button onClick={() => setShowPasswordModal(true)} className="px-6 py-3 bg-blue-100 text-blue-700 rounded-lg font-semibold hover:bg-blue-200 transition-all flex items-center gap-2">
+            <button onClick={() => setShowPasswordModal(true)} className="px-6 py-3 bg-[#EEF5F7] dark:bg-[#1A2332] text-[#4A9FBE] dark:text-[#6BB3CF] rounded-lg font-semibold hover:bg-[#D8DEE6] dark:hover:bg-[#242D3C] transition-all flex items-center gap-2">
               🔒 Change Password
             </button>
-            <button onClick={handleDownloadData} className="px-6 py-3 bg-yellow-100 text-yellow-700 rounded-lg font-semibold hover:bg-yellow-200 transition-all flex items-center gap-2">
+            <button onClick={handleDownloadData} className="px-6 py-3 bg-[#F5E3E3] dark:bg-[#1A2332] text-[#D4A855] dark:text-[#D4A855] rounded-lg font-semibold hover:bg-[#F5E3E3] dark:hover:bg-[#242D3C] transition-all flex items-center gap-2">
               <Download className="w-4 h-4" /> Download My Data
             </button>
-            <button onClick={handleDeleteAccount} className="px-6 py-3 bg-red-100 text-red-700 rounded-lg font-semibold hover:bg-red-200 transition-all flex items-center gap-2">
+            <button onClick={handleDeleteAccount} className="px-6 py-3 bg-[#F5E3E3] dark:bg-[#1A2332] text-[#8A4A4A] dark:text-[#E8C0C0] rounded-lg font-semibold hover:bg-[#F5E3E3] dark:hover:bg-[#242D3C] transition-all flex items-center gap-2">
               <Trash2 className="w-4 h-4" /> Delete Account
             </button>
           </div>
@@ -529,41 +529,41 @@ const ProfilePage = () => {
       {/* Password Change Modal */}
       {showPasswordModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-            <h3 className="text-2xl font-bold text-gray-800 mb-6">Change Password</h3>
+          <div className="bg-[#FAFBFC] dark:bg-[#242D3C] rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <h3 className="text-2xl font-bold text-[#2C3847] dark:text-[#E5E9EF] mb-6">Change Password</h3>
             <div className="space-y-4">
               <div className="relative">
-                <label className="block text-sm font-medium text-gray-600 mb-1">New Password</label>
+                <label className="block text-sm font-medium text-[#6B7A8F] dark:text-[#8A99AA] mb-1">New Password</label>
                 <input
                   type={showPasswords.new ? 'text' : 'password'}
                   value={passwordData.new}
                   onChange={(e) => setPasswordData({ ...passwordData, new: e.target.value })}
-                  className="w-full px-4 py-3 border rounded-lg pr-12"
+                  className="w-full px-4 py-3 border border-[#D8DEE6] dark:border-[#3A4555] bg-[#FAFBFC] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF] rounded-lg pr-12"
                   placeholder="Enter new password"
                 />
-                <button type="button" onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })} className="absolute right-3 top-9 text-gray-500">
+                <button type="button" onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })} className="absolute right-3 top-9 text-[#6B7A8F] dark:text-[#8A99AA]">
                   {showPasswords.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
               <div className="relative">
-                <label className="block text-sm font-medium text-gray-600 mb-1">Confirm New Password</label>
+                <label className="block text-sm font-medium text-[#6B7A8F] dark:text-[#8A99AA] mb-1">Confirm New Password</label>
                 <input
                   type={showPasswords.confirm ? 'text' : 'password'}
                   value={passwordData.confirm}
                   onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })}
-                  className="w-full px-4 py-3 border rounded-lg pr-12"
+                  className="w-full px-4 py-3 border border-[#D8DEE6] dark:border-[#3A4555] bg-[#FAFBFC] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF] rounded-lg pr-12"
                   placeholder="Confirm new password"
                 />
-                <button type="button" onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })} className="absolute right-3 top-9 text-gray-500">
+                <button type="button" onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })} className="absolute right-3 top-9 text-[#6B7A8F] dark:text-[#8A99AA]">
                   {showPasswords.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={handleChangePassword} disabled={changingPassword} className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50">
+              <button onClick={handleChangePassword} disabled={changingPassword} className="flex-1 bg-[#4A9FBE] dark:bg-[#6BB3CF] text-white py-3 rounded-lg font-semibold hover:bg-[#3A7C96] dark:hover:bg-[#8AC5DC] disabled:opacity-50">
                 {changingPassword ? 'Changing...' : 'Change Password'}
               </button>
-              <button onClick={() => { setShowPasswordModal(false); setPasswordData({ current: '', new: '', confirm: '' }); }} className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300">
+              <button onClick={() => { setShowPasswordModal(false); setPasswordData({ current: '', new: '', confirm: '' }); }} className="flex-1 bg-[#D8DEE6] dark:bg-[#3A4555] text-[#4A5568] dark:text-[#D1D8E0] py-3 rounded-lg font-semibold hover:bg-[#D8DEE6] dark:hover:bg-[#3A4555]">
                 Cancel
               </button>
             </div>

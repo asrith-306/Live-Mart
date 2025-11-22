@@ -38,33 +38,33 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <h2 className="text-2xl font-bold mb-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-[#FAFBFC] dark:bg-[#242D3C] rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-[#D8DEE6] dark:border-[#3A4555]">
+        <h2 className="text-2xl font-bold mb-4 text-[#2C3847] dark:text-[#E5E9EF]">
           {product ? 'Edit Product' : 'Add New Product'}
         </h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Product Name</label>
+            <label className="block text-sm font-medium mb-1 text-[#4A5568] dark:text-[#D1D8E0]">Product Name</label>
             <input
               type="text"
               name="name"
               value={formData.name}
               onChange={handleChange}
               required
-              className="w-full border rounded px-3 py-2"
+              className="w-full border border-[#D8DEE6] dark:border-[#3A4555] bg-[#FAFBFC] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[rgba(74,159,190,0.3)] focus:border-[#4A9FBE] dark:focus:border-[#6BB3CF]"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Category</label>
+            <label className="block text-sm font-medium mb-1 text-[#4A5568] dark:text-[#D1D8E0]">Category</label>
             <select
               name="category"
               value={formData.category}
               onChange={handleChange}
               required
-              className="w-full border rounded px-3 py-2"
+              className="w-full border border-[#D8DEE6] dark:border-[#3A4555] bg-[#FAFBFC] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[rgba(74,159,190,0.3)] focus:border-[#4A9FBE] dark:focus:border-[#6BB3CF]"
             >
               <option value="">Select Category</option>
               <option value="Electronics">Electronics</option>
@@ -77,7 +77,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Price (₹)</label>
+            <label className="block text-sm font-medium mb-1 text-[#4A5568] dark:text-[#D1D8E0]">Price (₹)</label>
             <input
               type="number"
               name="price"
@@ -86,12 +86,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }
               required
               min="0"
               step="0.01"
-              className="w-full border rounded px-3 py-2"
+              className="w-full border border-[#D8DEE6] dark:border-[#3A4555] bg-[#FAFBFC] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[rgba(74,159,190,0.3)] focus:border-[#4A9FBE] dark:focus:border-[#6BB3CF]"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Stock</label>
+            <label className="block text-sm font-medium mb-1 text-[#4A5568] dark:text-[#D1D8E0]">Stock</label>
             <input
               type="number"
               name="stock"
@@ -99,29 +99,29 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }
               onChange={handleChange}
               required
               min="0"
-              className="w-full border rounded px-3 py-2"
+              className="w-full border border-[#D8DEE6] dark:border-[#3A4555] bg-[#FAFBFC] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[rgba(74,159,190,0.3)] focus:border-[#4A9FBE] dark:focus:border-[#6BB3CF]"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
+            <label className="block text-sm font-medium mb-1 text-[#4A5568] dark:text-[#D1D8E0]">Description</label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleChange}
               rows={3}
-              className="w-full border rounded px-3 py-2"
+              className="w-full border border-[#D8DEE6] dark:border-[#3A4555] bg-[#FAFBFC] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[rgba(74,159,190,0.3)] focus:border-[#4A9FBE] dark:focus:border-[#6BB3CF]"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Image URL</label>
+            <label className="block text-sm font-medium mb-1 text-[#4A5568] dark:text-[#D1D8E0]">Image URL</label>
             <input
               type="url"
               name="image_url"
               value={formData.image_url}
               onChange={handleChange}
-              className="w-full border rounded px-3 py-2"
+              className="w-full border border-[#D8DEE6] dark:border-[#3A4555] bg-[#FAFBFC] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[rgba(74,159,190,0.3)] focus:border-[#4A9FBE] dark:focus:border-[#6BB3CF]"
               placeholder="https://example.com/image.jpg"
             />
           </div>
@@ -129,14 +129,14 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }
           <div className="flex gap-2 pt-4">
             <button
               type="submit"
-              className="flex-1 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              className="flex-1 bg-gradient-to-r from-[#4A9FBE] to-[#5AA5B0] dark:from-[#6BB3CF] dark:to-[#5AA5B0] text-white px-4 py-2 rounded-lg hover:from-[#3A7C96] hover:to-[#4A9FBE] dark:hover:from-[#4A9FBE] dark:hover:to-[#6BB3CF] font-semibold transition-all shadow-md"
             >
               {product ? 'Update' : 'Add'} Product
             </button>
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+              className="flex-1 bg-[#EDF2F7] dark:bg-[#1A2332] text-[#4A5568] dark:text-[#D1D8E0] px-4 py-2 rounded-lg hover:bg-[#D8DEE6] dark:hover:bg-[#242D3C] font-semibold transition-colors border border-[#D8DEE6] dark:border-[#3A4555]"
             >
               Cancel
             </button>

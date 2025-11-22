@@ -150,10 +150,6 @@ export default function DeliveryPartnerDashboard() {
     }
   }
 
-  // Email notification is now handled automatically by database trigger
-  // No need for separate email function - trigger will create notification
-  // when order status changes to 'delivered'
-
   // Update order status
   async function updateOrderStatus(orderId: string, newStatus: string) {
     const { error } = await supabase
@@ -166,7 +162,6 @@ export default function DeliveryPartnerDashboard() {
       return;
     }
 
-    // Database trigger will automatically send email when status = 'delivered'
     // Mark delivery partner as available
     if (newStatus === 'delivered' && deliveryPartnerId) {
       console.log('✅ Marking delivery partner as available...');
@@ -219,10 +214,10 @@ export default function DeliveryPartnerDashboard() {
 
   if (loading || !deliveryPartnerId) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-[#EDF2F7] dark:bg-[#1A2332]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4A9FBE] dark:border-[#6BB3CF] mx-auto mb-4"></div>
+          <p className="text-[#6B7A8F] dark:text-[#8A99AA]">
             {!deliveryPartnerId ? 'Verifying delivery partner...' : 'Loading orders...'}
           </p>
         </div>
@@ -241,14 +236,14 @@ export default function DeliveryPartnerDashboard() {
   const totalEarnings = completedOrders.length * earningsPerDelivery;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-[#F2F4F6] via-[#EDF2F7] to-[#EEF5F7] dark:bg-gradient-to-br dark:from-[#1A2332] dark:via-[#1F2937] dark:to-[#1A2332]">
       {/* Header */}
-      <div className="bg-gradient-to-r from-green-600 to-teal-600 text-white p-6 shadow-lg">
+      <div className="bg-gradient-to-r from-[#5FA889] to-[#7DBFA0] dark:from-[#7DBFA0] dark:to-[#5FA889] text-white p-6 shadow-lg">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold mb-1">Delivery Dashboard</h1>
-              <p className="text-green-100">Welcome back, Partner!</p>
+              <p className="text-[#D9EDE5]">Welcome back, Partner!</p>
             </div>
             
             <div className="flex items-center gap-4">
@@ -263,8 +258,8 @@ export default function DeliveryPartnerDashboard() {
                 onClick={() => setIsOnline(!isOnline)}
                 className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
                   isOnline
-                    ? 'bg-white text-green-600'
-                    : 'bg-gray-600 text-white'
+                    ? 'bg-[#FAFBFC] dark:bg-[#242D3C] text-[#5FA889] dark:text-[#7DBFA0]'
+                    : 'bg-[#6B7A8F] dark:bg-[#3A4555] text-white'
                 }`}
               >
                 {isOnline ? '🟢 Online' : '🔴 Offline'}
@@ -276,9 +271,9 @@ export default function DeliveryPartnerDashboard() {
 
       <div className="max-w-6xl mx-auto p-6">
         {/* Debug Info */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <p className="text-sm font-semibold text-blue-800 mb-2">📊 System Status</p>
-          <div className="text-xs text-blue-700 space-y-1">
+        <div className="bg-[#EEF5F7] dark:bg-[#1A2332] border border-[#6BB3CF] dark:border-[#3A4555] rounded-lg p-4 mb-6">
+          <p className="text-sm font-semibold text-[#4A9FBE] dark:text-[#6BB3CF] mb-2">📊 System Status</p>
+          <div className="text-xs text-[#4A5568] dark:text-[#D1D8E0] space-y-1">
             <p>• Delivery Partner ID: {deliveryPartnerId}</p>
             <p>• Total Orders: {orders.length}</p>
             <p>• Active Orders: {activeOrders.length}</p>
@@ -290,32 +285,32 @@ export default function DeliveryPartnerDashboard() {
 
         {/* Stats */}
         <div className="grid md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-[#FAFBFC] dark:bg-[#242D3C] rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm">Active Orders</p>
-                <p className="text-3xl font-bold text-blue-600">{activeOrders.length}</p>
+                <p className="text-[#6B7A8F] dark:text-[#8A99AA] text-sm">Active Orders</p>
+                <p className="text-3xl font-bold text-[#4A9FBE] dark:text-[#6BB3CF]">{activeOrders.length}</p>
               </div>
-              <Package className="w-12 h-12 text-blue-600 opacity-20" />
+              <Package className="w-12 h-12 text-[#4A9FBE] dark:text-[#6BB3CF] opacity-20" />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-[#FAFBFC] dark:bg-[#242D3C] rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm">Completed Today</p>
-                <p className="text-3xl font-bold text-green-600">{completedOrders.length}</p>
+                <p className="text-[#6B7A8F] dark:text-[#8A99AA] text-sm">Completed Today</p>
+                <p className="text-3xl font-bold text-[#5FA889] dark:text-[#7DBFA0]">{completedOrders.length}</p>
               </div>
-              <CheckCircle className="w-12 h-12 text-green-600 opacity-20" />
+              <CheckCircle className="w-12 h-12 text-[#5FA889] dark:text-[#7DBFA0] opacity-20" />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-[#FAFBFC] dark:bg-[#242D3C] rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm">Earnings Today</p>
-                <p className="text-3xl font-bold text-purple-600">₹{totalEarnings}</p>
-                <p className="text-xs text-gray-400 mt-1">₹{earningsPerDelivery} per delivery</p>
+                <p className="text-[#6B7A8F] dark:text-[#8A99AA] text-sm">Earnings Today</p>
+                <p className="text-3xl font-bold text-[#6B7A8F] dark:text-[#8A99AA]">₹{totalEarnings}</p>
+                <p className="text-xs text-[#6B7A8F] dark:text-[#8A99AA] mt-1">₹{earningsPerDelivery} per delivery</p>
               </div>
               <span className="text-4xl opacity-20">💰</span>
             </div>
@@ -324,7 +319,7 @@ export default function DeliveryPartnerDashboard() {
 
         {/* Current Delivery */}
         {selectedOrder && (
-          <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg shadow-lg p-6 mb-6 text-white">
+          <div className="bg-gradient-to-r from-[#D97B7B] to-[#E59595] dark:from-[#E59595] dark:to-[#D97B7B] rounded-lg shadow-lg p-6 mb-6 text-white">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <Navigation className="animate-pulse" />
               Current Delivery
@@ -350,7 +345,7 @@ export default function DeliveryPartnerDashboard() {
             <div className="flex gap-3">
               <button
                 onClick={() => openInMaps(selectedOrder.delivery_lat, selectedOrder.delivery_lng)}
-                className="flex-1 bg-white text-orange-600 font-semibold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-opacity-90 transition-colors"
+                className="flex-1 bg-[#FAFBFC] dark:bg-[#242D3C] text-[#D97B7B] dark:text-[#E59595] font-semibold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-white dark:hover:bg-[#1A2332] transition-colors"
               >
                 <MapPin className="w-5 h-5" />
                 Open in Maps
@@ -358,7 +353,7 @@ export default function DeliveryPartnerDashboard() {
               
               <button
                 onClick={() => window.open(`tel:${selectedOrder.customer_phone}`)}
-                className="flex-1 bg-green-500 text-white font-semibold py-3 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                className="flex-1 bg-[#5FA889] dark:bg-[#7DBFA0] text-white font-semibold py-3 rounded-lg hover:bg-[#4D8A6F] dark:hover:bg-[#5FA889] transition-colors flex items-center justify-center gap-2"
               >
                 <Phone className="w-5 h-5" />
                 Call Customer
@@ -366,7 +361,7 @@ export default function DeliveryPartnerDashboard() {
               
               <button
                 onClick={handleCompleteDelivery}
-                className="flex-1 bg-green-600 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-green-700 transition-colors"
+                className="flex-1 bg-[#5FA889] dark:bg-[#7DBFA0] text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-[#4D8A6F] dark:hover:bg-[#5FA889] transition-colors"
               >
                 <CheckCircle className="w-5 h-5" />
                 Mark Delivered
@@ -376,11 +371,11 @@ export default function DeliveryPartnerDashboard() {
         )}
 
         {/* Active Orders List */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Active Orders</h2>
+        <div className="bg-[#FAFBFC] dark:bg-[#242D3C] rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-bold text-[#2C3847] dark:text-[#E5E9EF] mb-4">Active Orders</h2>
           
           {activeOrders.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
+            <div className="text-center py-12 text-[#6B7A8F] dark:text-[#8A99AA]">
               <Package className="w-16 h-16 mx-auto mb-4 opacity-50" />
               <p>No active orders assigned yet</p>
               <p className="text-sm mt-2">Orders will appear here when assigned by retailer</p>
@@ -390,19 +385,19 @@ export default function DeliveryPartnerDashboard() {
               {activeOrders.map((order) => (
                 <div
                   key={order.id}
-                  className="border-2 border-blue-200 rounded-lg p-5 hover:border-blue-400 hover:shadow-lg transition-all bg-gradient-to-r from-blue-50 to-white"
+                  className="border-2 border-[#6BB3CF] dark:border-[#3A4555] rounded-lg p-5 hover:border-[#4A9FBE] dark:hover:border-[#6BB3CF] hover:shadow-lg transition-all bg-gradient-to-r from-[#EEF5F7] to-[#FAFBFC] dark:from-[#1A2332] dark:to-[#242D3C]"
                 >
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-3">
-                        <span className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold shadow-sm">
+                        <span className="px-4 py-2 bg-[#4A9FBE] dark:bg-[#6BB3CF] text-white rounded-lg text-sm font-bold shadow-sm">
                           {order.order_number || 'N/A'}
                         </span>
                         <span className={`px-4 py-2 rounded-lg text-sm font-semibold ${
-                          order.delivery_status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-                          order.delivery_status === 'preparing' ? 'bg-yellow-100 text-yellow-800' :
-                          order.delivery_status === 'out_for_delivery' ? 'bg-purple-100 text-purple-800' :
-                          'bg-gray-100 text-gray-800'
+                          order.delivery_status === 'confirmed' ? 'bg-[#EEF5F7] dark:bg-[#1A2332] text-[#4A9FBE] dark:text-[#6BB3CF]' :
+                          order.delivery_status === 'preparing' ? 'bg-[#F5E3E3] dark:bg-[#1A2332] text-[#D4A855]' :
+                          order.delivery_status === 'out_for_delivery' ? 'bg-[#EDF2F7] dark:bg-[#1A2332] text-[#6B7A8F] dark:text-[#8A99AA]' :
+                          'bg-[#EDF2F7] dark:bg-[#1A2332] text-[#6B7A8F] dark:text-[#8A99AA]'
                         }`}>
                           {order.delivery_status?.replace(/_/g, ' ').toUpperCase() || 'PENDING'}
                         </span>
@@ -411,39 +406,39 @@ export default function DeliveryPartnerDashboard() {
                     
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>
-                        <p className="text-xs text-gray-500 mb-1">Customer Name</p>
-                        <p className="font-bold text-gray-900 text-lg">
+                        <p className="text-xs text-[#6B7A8F] dark:text-[#8A99AA] mb-1">Customer Name</p>
+                        <p className="font-bold text-[#2C3847] dark:text-[#E5E9EF] text-lg">
                           {order.customer_name || 'Unknown Customer'}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 mb-1">Contact</p>
-                        <p className="font-semibold text-gray-700">
+                        <p className="text-xs text-[#6B7A8F] dark:text-[#8A99AA] mb-1">Contact</p>
+                        <p className="font-semibold text-[#4A5568] dark:text-[#D1D8E0]">
                           📞 {order.customer_phone || 'Not available'}
                         </p>
                       </div>
                     </div>
 
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Delivery Address</p>
-                      <div className="flex items-start gap-2 bg-white p-3 rounded-lg border border-gray-200">
-                        <MapPin className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-gray-700 font-medium">
+                      <p className="text-xs text-[#6B7A8F] dark:text-[#8A99AA] mb-1">Delivery Address</p>
+                      <div className="flex items-start gap-2 bg-[#FAFBFC] dark:bg-[#1A2332] p-3 rounded-lg border border-[#D8DEE6] dark:border-[#3A4555]">
+                        <MapPin className="w-5 h-5 text-[#D97B7B] dark:text-[#E59595] flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-[#4A5568] dark:text-[#D1D8E0] font-medium">
                           {order.delivery_address || 'Address not available'}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between bg-green-50 p-3 rounded-lg border border-green-200">
-                      <span className="text-sm text-gray-600">Order Amount:</span>
-                      <span className="text-xl font-bold text-green-600">
+                    <div className="flex items-center justify-between bg-[#D9EDE5] dark:bg-[#1A2332] p-3 rounded-lg border border-[#5FA889] dark:border-[#3A4555]">
+                      <span className="text-sm text-[#4A5568] dark:text-[#D1D8E0]">Order Amount:</span>
+                      <span className="text-xl font-bold text-[#5FA889] dark:text-[#7DBFA0]">
                         ₹{getOrderAmount(order)}
                       </span>
                     </div>
                     
-                    <div className="flex items-center justify-between bg-purple-50 p-3 rounded-lg border border-purple-200">
-                      <span className="text-sm text-gray-600">Your Delivery Fee:</span>
-                      <span className="text-lg font-bold text-purple-600">
+                    <div className="flex items-center justify-between bg-[#EDF2F7] dark:bg-[#1A2332] p-3 rounded-lg border border-[#6B7A8F] dark:border-[#3A4555]">
+                      <span className="text-sm text-[#4A5568] dark:text-[#D1D8E0]">Your Delivery Fee:</span>
+                      <span className="text-lg font-bold text-[#6B7A8F] dark:text-[#8A99AA]">
                         ₹{earningsPerDelivery}
                       </span>
                     </div>
@@ -453,21 +448,21 @@ export default function DeliveryPartnerDashboard() {
                         <>
                           <button
                             onClick={() => order.delivery_lat && order.delivery_lng && openInMaps(order.delivery_lat, order.delivery_lng)}
-                            className="flex-1 bg-blue-500 text-white font-semibold py-3 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+                            className="flex-1 bg-[#4A9FBE] dark:bg-[#6BB3CF] text-white font-semibold py-3 rounded-lg hover:bg-[#3A7C96] dark:hover:bg-[#8AC5DC] transition-colors flex items-center justify-center gap-2"
                           >
                             <MapPin className="w-5 h-5" />
                             Navigate
                           </button>
                           <button
                             onClick={() => order.customer_phone && window.open(`tel:${order.customer_phone}`)}
-                            className="flex-1 bg-green-500 text-white font-semibold py-3 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                            className="flex-1 bg-[#5FA889] dark:bg-[#7DBFA0] text-white font-semibold py-3 rounded-lg hover:bg-[#4D8A6F] dark:hover:bg-[#5FA889] transition-colors flex items-center justify-center gap-2"
                           >
                             <Phone className="w-5 h-5" />
                             Call
                           </button>
                           <button
                             onClick={() => updateOrderStatus(order.id, 'delivered')}
-                            className="flex-1 bg-purple-500 text-white font-semibold py-3 rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-2"
+                            className="flex-1 bg-[#6B7A8F] dark:bg-[#8A99AA] text-white font-semibold py-3 rounded-lg hover:bg-[#4A5568] dark:hover:bg-[#6B7A8F] transition-colors flex items-center justify-center gap-2"
                           >
                             <CheckCircle className="w-5 h-5" />
                             Complete
@@ -476,7 +471,7 @@ export default function DeliveryPartnerDashboard() {
                       ) : (
                         <button
                           onClick={() => handleStartDelivery(order)}
-                          className="w-full bg-green-500 text-white font-semibold py-3 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                          className="w-full bg-[#5FA889] dark:bg-[#7DBFA0] text-white font-semibold py-3 rounded-lg hover:bg-[#4D8A6F] dark:hover:bg-[#5FA889] transition-colors flex items-center justify-center gap-2"
                         >
                           <Navigation className="w-5 h-5" />
                           Start Delivery
@@ -492,30 +487,30 @@ export default function DeliveryPartnerDashboard() {
 
         {/* Completed Orders */}
         {completedOrders.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-[#FAFBFC] dark:bg-[#242D3C] rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Completed Today</h2>
-              <div className="bg-purple-100 px-4 py-2 rounded-lg">
-                <span className="text-purple-800 font-bold">Total Earned: ₹{totalEarnings}</span>
+              <h2 className="text-xl font-bold text-[#2C3847] dark:text-[#E5E9EF]">Completed Today</h2>
+              <div className="bg-[#EDF2F7] dark:bg-[#1A2332] px-4 py-2 rounded-lg">
+                <span className="text-[#6B7A8F] dark:text-[#8A99AA] font-bold">Total Earned: ₹{totalEarnings}</span>
               </div>
             </div>
             <div className="space-y-3">
               {completedOrders.map((order) => (
                 <div
                   key={order.id}
-                  className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200"
+                  className="flex items-center justify-between p-4 bg-[#D9EDE5] dark:bg-[#1A2332] rounded-lg border border-[#5FA889] dark:border-[#3A4555]"
                 >
                   <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    <CheckCircle className="w-5 h-5 text-[#5FA889] dark:text-[#7DBFA0]" />
                     <div>
-                      <p className="font-semibold text-gray-800">{order.order_number}</p>
-                      <p className="text-sm text-gray-600">{order.customer_name}</p>
-                      <p className="text-xs text-gray-500">Order: ₹{getOrderAmount(order)}</p>
+                      <p className="font-semibold text-[#2C3847] dark:text-[#E5E9EF]">{order.order_number}</p>
+                      <p className="text-sm text-[#4A5568] dark:text-[#D1D8E0]">{order.customer_name}</p>
+                      <p className="text-xs text-[#6B7A8F] dark:text-[#8A99AA]">Order: ₹{getOrderAmount(order)}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-gray-500">Delivery Fee</p>
-                    <span className="font-bold text-green-600 text-lg">₹{earningsPerDelivery}</span>
+                    <p className="text-xs text-[#6B7A8F] dark:text-[#8A99AA]">Delivery Fee</p>
+                    <span className="font-bold text-[#5FA889] dark:text-[#7DBFA0] text-lg">₹{earningsPerDelivery}</span>
                   </div>
                 </div>
               ))}
