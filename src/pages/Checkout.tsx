@@ -1,8 +1,9 @@
-import { useState, FormEvent, ChangeEvent } from 'react';
+import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
-import { MapPin, Phone, CreditCard, Truck, Calendar, Check } from 'lucide-react';
+import { MapPin, Phone, CreditCard, Truck, Calendar, Check, X, ChevronLeft, Sparkles } from 'lucide-react';
+import { fetchProductsByCategory, Product } from '@/services/productService';
 
 interface FormData {
   phone: string;
@@ -13,11 +14,13 @@ interface FormData {
 }
 
 function Checkout() {
-  const { cartItems, getCartTotal, clearCart } = useCart();
+  const { cartItems, getCartTotal, clearCart, addToCart } = useCart();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
   const [calendarLinked, setCalendarLinked] = useState(false);
+  const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
+  const [showRecommendations, setShowRecommendations] = useState(false);
  
   const [formData, setFormData] = useState<FormData>({
     phone: '',
@@ -26,6 +29,52 @@ function Checkout() {
     latitude: 17.385044,
     longitude: 78.486671,
   });
+
+  // Load recommendations based on current cart items
+  useEffect(() => {
+    if (cartItems.length > 0) {
+      loadRecommendations();
+    }
+  }, [cartItems]);
+
+  const loadRecommendations = async () => {
+    try {
+      // Get unique categories from current cart items
+      const categories = [...new Set(cartItems.map(item => item.category))];
+      
+      if (categories.length === 0) return;
+
+      // Fetch products from all cart categories
+      const allProducts: Product[] = [];
+      for (const category of categories) {
+        if (category && category !== 'All') {
+          const data = await fetchProductsByCategory(category);
+          allProducts.push(...data);
+        }
+      }
+
+      // Remove duplicates and filter out products already in cart
+      const uniqueProducts = allProducts.filter(
+        (product, index, self) => 
+          index === self.findIndex(p => p.id === product.id) &&
+          !cartItems.find(item => item.id === product.id)
+      );
+
+      // Limit to 6 recommendations
+      const filtered = uniqueProducts.slice(0, 6);
+      setRecommendedProducts(filtered);
+      
+      if (filtered.length > 0) {
+        setShowRecommendations(true);
+      }
+    } catch (error) {
+      console.error('Failed to load recommendations:', error);
+    }
+  };
+
+  const handleAddToCart = (product: Product) => {
+    addToCart(product, 1);
+  };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -143,6 +192,12 @@ function Checkout() {
         }
       }
 
+      // Save last purchased category for future recommendations
+      if (cartItems.length > 0) {
+        const lastItem = cartItems[cartItems.length - 1];
+        localStorage.setItem('lastPurchasedCategory', lastItem.category);
+      }
+
       if (formData.paymentMethod === 'online') {
         redirectToMockPayment(order.id, totalPrice);
       } else {
@@ -191,6 +246,12 @@ function Checkout() {
       </div>
     );
   }
+
+  // Get category names from cart for display
+  const cartCategories = [...new Set(cartItems.map(item => item.category))];
+  const categoryDisplay = cartCategories.length > 1 
+    ? `${cartCategories[0]} and more`
+    : cartCategories[0];
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -366,6 +427,93 @@ function Checkout() {
           </div>
         </div>
       </div>
+
+      {/* Recommendations Sidebar */}
+      {recommendedProducts.length > 0 && (
+        <div className={`fixed top-1/2 right-0 transform -translate-y-1/2 transition-all duration-300 z-40 ${
+          showRecommendations ? 'translate-x-0' : 'translate-x-full'
+        }`}>
+          <div className="bg-white rounded-l-2xl shadow-2xl overflow-hidden" style={{ width: '320px' }}>
+            {/* Sidebar Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  <h3 className="font-bold text-lg">Also Recommended</h3>
+                </div>
+                <button
+                  onClick={() => setShowRecommendations(false)}
+                  className="text-white hover:bg-white/20 rounded-full p-1 transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-sm text-white/90">For your {categoryDisplay} purchase</p>
+            </div>
+
+            {/* Recommended Products */}
+            <div className="max-h-[500px] overflow-y-auto p-4 space-y-3">
+              {recommendedProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className="bg-gray-50 rounded-lg p-3 hover:shadow-md transition-all cursor-pointer"
+                >
+                  <div className="flex gap-3">
+                    <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0 overflow-hidden">
+                      {product.image_url ? (
+                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-2xl">
+                          📦
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-sm text-gray-800 truncate">{product.name}</h4>
+                      <p className="text-xs text-gray-500 mb-1">{product.category}</p>
+                      <p className="text-lg font-bold text-purple-600">₹{product.price}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleAddToCart(product)}
+                    className="w-full mt-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 rounded-lg text-sm font-semibold hover:from-blue-700 hover:to-purple-700 transition-all"
+                  >
+                    Add to Cart
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Bottom Button to Reopen Recommendations */}
+      {!showRecommendations && recommendedProducts.length > 0 && (
+        <button
+          onClick={() => setShowRecommendations(true)}
+          className="fixed bottom-8 right-8 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-4 rounded-full shadow-2xl hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 z-40 flex items-center gap-3 animate-bounce-subtle"
+        >
+          <Sparkles className="w-5 h-5" />
+          <span className="font-semibold">View Recommendations</span>
+          <span className="bg-white/20 px-2 py-1 rounded-full text-sm">{recommendedProducts.length}</span>
+        </button>
+      )}
+
+      {/* Add subtle bounce animation */}
+      <style>{`
+        @keyframes bounce-subtle {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-5px);
+          }
+        }
+        
+        .animate-bounce-subtle {
+          animation: bounce-subtle 2s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 }

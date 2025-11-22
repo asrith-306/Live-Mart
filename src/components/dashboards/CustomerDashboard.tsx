@@ -2,10 +2,22 @@
 import React, { useState, useEffect } from 'react';
 import { fetchProducts, fetchProductsByCategory, Product } from '@/services/productService';
 import ProductCard from '@/components/products/ProductCard';
-import { X, Trash2, Plus, Minus } from 'lucide-react';
-import { useCart } from '@/context/CartContext'; // Import useCart
+import { X, Trash2, Plus, Minus, Sparkles } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/utils/supabaseClient';
+
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  category: string;
+  image_url?: string;
+}
 
 const CustomerDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -13,6 +25,9 @@ const CustomerDashboard: React.FC = () => {
   const [showCartModal, setShowCartModal] = useState(false);
   const [showAddedNotification, setShowAddedNotification] = useState(false);
   const [lastAddedProduct, setLastAddedProduct] = useState<string>('');
+  const [lastPurchasedCategory, setLastPurchasedCategory] = useState<string | null>(null);
+  const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
+  const [showRecommendations, setShowRecommendations] = useState(false);
 
   // Use CartContext instead of local state
   const { cartItems, addToCart, removeFromCart, updateQuantity, getCartTotal, getCartCount } = useCart();
@@ -31,6 +46,21 @@ const CustomerDashboard: React.FC = () => {
     loadProducts();
   }, [selectedCategory]);
 
+  // Load last purchased category from localStorage on mount
+  useEffect(() => {
+    const savedCategory = localStorage.getItem('lastPurchasedCategory');
+    if (savedCategory) {
+      setLastPurchasedCategory(savedCategory);
+    }
+  }, []);
+
+  // Load recommendations when last purchased category changes
+  useEffect(() => {
+    if (lastPurchasedCategory && lastPurchasedCategory !== 'All') {
+      loadRecommendations();
+    }
+  }, [lastPurchasedCategory, cartItems]);
+
   const loadProducts = async () => {
     try {
       setLoading(true);
@@ -46,9 +76,27 @@ const CustomerDashboard: React.FC = () => {
     }
   };
 
+  const loadRecommendations = async () => {
+    if (!lastPurchasedCategory) return;
+    
+    try {
+      const data = await fetchProductsByCategory(lastPurchasedCategory);
+      // Filter out products already in cart and limit to 5 recommendations
+      const filtered = data
+        .filter((p: Product) => !(cartItems as CartItem[]).find((item: CartItem) => item.id === p.id))
+        .slice(0, 5);
+      setRecommendedProducts(filtered);
+      if (filtered.length > 0) {
+        setShowRecommendations(true);
+      }
+    } catch (error) {
+      console.error('Failed to load recommendations:', error);
+    }
+  };
+
   const handleAddToCart = (product: Product) => {
     console.log('Adding product to cart:', product);
-    addToCart(product, 1); // Use CartContext's addToCart
+    addToCart(product, 1);
     
     // Show notification
     setLastAddedProduct(product.name);
@@ -56,13 +104,23 @@ const CustomerDashboard: React.FC = () => {
     setTimeout(() => setShowAddedNotification(false), 3000);
   };
 
+  const handleCheckout = () => {
+    if (cartItems.length > 0) {
+      // Get the last item's category and save it for future recommendations
+      const lastItem = (cartItems as CartItem[])[cartItems.length - 1];
+      localStorage.setItem('lastPurchasedCategory', lastItem.category);
+    }
+    navigate('/checkout');
+    setShowCartModal(false);
+  };
+
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     product.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const cartItemCount = getCartCount(); // Use CartContext's getCartCount
-  const cartTotal = getCartTotal(); // Use CartContext's getCartTotal
+  const cartItemCount = getCartCount();
+  const cartTotal = getCartTotal();
 
   if (loading) {
     return (
@@ -210,6 +268,75 @@ const CustomerDashboard: React.FC = () => {
         </div>
       )}
 
+      {/* Floating Bottom Button to Open Recommendations */}
+      {!showRecommendations && recommendedProducts.length > 0 && (
+        <button
+          onClick={() => setShowRecommendations(true)}
+          className="fixed bottom-8 right-8 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 rounded-full shadow-2xl hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105 z-40 flex items-center gap-3 animate-bounce-subtle"
+        >
+          <Sparkles className="w-5 h-5" />
+          <span className="font-semibold">Recommended for You</span>
+          <span className="bg-white/20 px-2 py-1 rounded-full text-sm">{recommendedProducts.length}</span>
+        </button>
+      )}
+
+      {/* Recommendations Sidebar - Right Side */}
+      {recommendedProducts.length > 0 && showRecommendations && (
+        <div className="fixed top-1/2 right-0 transform -translate-y-1/2 transition-all duration-300 z-40 animate-slide-in-right">
+          <div className="bg-white rounded-l-2xl shadow-2xl overflow-hidden" style={{ width: '320px' }}>
+            {/* Sidebar Header */}
+            <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  <h3 className="font-bold text-lg">Recommended for You</h3>
+                </div>
+                <button
+                  onClick={() => setShowRecommendations(false)}
+                  className="text-white hover:bg-white/20 rounded-full p-1 transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-sm text-white/90">Based on your {lastPurchasedCategory} purchase</p>
+            </div>
+
+            {/* Recommended Products */}
+            <div className="max-h-[500px] overflow-y-auto p-4 space-y-3">
+              {recommendedProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className="bg-gray-50 rounded-lg p-3 hover:shadow-md transition-all cursor-pointer"
+                >
+                  <div className="flex gap-3">
+                    <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0 overflow-hidden">
+                      {product.image_url ? (
+                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-2xl">
+                          📦
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-sm text-gray-800 truncate">{product.name}</h4>
+                      <p className="text-xs text-gray-500 mb-1">{product.category}</p>
+                      <p className="text-lg font-bold text-purple-600">₹{product.price}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleAddToCart(product)}
+                    className="w-full mt-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 rounded-lg text-sm font-semibold hover:from-purple-700 hover:to-pink-700 transition-all"
+                  >
+                    Add to Cart
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Cart Modal - Big popup with blurred background, center aligned */}
       {showCartModal && (
         <div 
@@ -246,7 +373,7 @@ const CustomerDashboard: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {cartItems.map((item) => (
+                  {(cartItems as CartItem[]).map((item: CartItem) => (
                     <div key={item.id} className="flex gap-4 bg-gray-50 p-5 rounded-xl hover:shadow-md transition-shadow">
                       <div className="w-24 h-24 bg-gray-200 rounded-lg flex-shrink-0 overflow-hidden">
                         {item.image_url ? (
@@ -302,10 +429,7 @@ const CustomerDashboard: React.FC = () => {
                 </div>
                 <button
                   className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-xl font-bold text-lg hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-[1.02] shadow-lg"
-                  onClick={() => {
-                    alert('Proceeding to checkout...');
-                    setShowCartModal(false);
-                  }}
+                  onClick={handleCheckout}
                 >
                   Proceed to Checkout →
                 </button>
@@ -331,6 +455,26 @@ const CustomerDashboard: React.FC = () => {
           from { opacity: 0; transform: translateX(100px); }
           to { opacity: 1; transform: translateX(0); }
         }
+
+        @keyframes slide-in-right {
+          from { 
+            opacity: 0; 
+            transform: translateY(-50%) translateX(100%);
+          }
+          to { 
+            opacity: 1; 
+            transform: translateY(-50%) translateX(0);
+          }
+        }
+
+        @keyframes bounce-subtle {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-5px);
+          }
+        }
         
         .animate-fade-in {
           animation: fade-in 0.6s ease-out;
@@ -343,6 +487,14 @@ const CustomerDashboard: React.FC = () => {
 
         .animate-slide-in {
           animation: slide-in 0.4s ease-out;
+        }
+
+        .animate-slide-in-right {
+          animation: slide-in-right 0.4s ease-out;
+        }
+
+        .animate-bounce-subtle {
+          animation: bounce-subtle 2s ease-in-out infinite;
         }
       `}</style>
     </div>
