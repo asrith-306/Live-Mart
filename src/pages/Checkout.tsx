@@ -2,7 +2,7 @@ import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
-import { MapPin, Phone, CreditCard, Truck, Calendar, Check, X, ChevronLeft, Sparkles } from 'lucide-react';
+import { MapPin, Phone, CreditCard, Truck, Calendar, Check, X, ChevronLeft, Sparkles, Tag } from 'lucide-react';
 import { fetchProductsByCategory, Product } from '@/services/productService';
 
 interface FormData {
@@ -21,6 +21,12 @@ function Checkout() {
   const [calendarLinked, setCalendarLinked] = useState(false);
   const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
   const [showRecommendations, setShowRecommendations] = useState(false);
+  
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [couponError, setCouponError] = useState('');
+  const [discount, setDiscount] = useState(0);
  
   const [formData, setFormData] = useState<FormData>({
     phone: '',
@@ -29,6 +35,8 @@ function Checkout() {
     latitude: 17.385044,
     longitude: 78.486671,
   });
+
+  const DELIVERY_FEE = 40;
 
   // Load recommendations based on current cart items
   useEffect(() => {
@@ -39,12 +47,10 @@ function Checkout() {
 
   const loadRecommendations = async () => {
     try {
-      // Get unique categories from current cart items
       const categories = [...new Set(cartItems.map(item => item.category))];
       
       if (categories.length === 0) return;
 
-      // Fetch products from all cart categories
       const allProducts: Product[] = [];
       for (const category of categories) {
         if (category && category !== 'All') {
@@ -53,14 +59,12 @@ function Checkout() {
         }
       }
 
-      // Remove duplicates and filter out products already in cart
       const uniqueProducts = allProducts.filter(
         (product, index, self) => 
           index === self.findIndex(p => p.id === product.id) &&
           !cartItems.find(item => item.id === product.id)
       );
 
-      // Limit to 6 recommendations
       const filtered = uniqueProducts.slice(0, 6);
       setRecommendedProducts(filtered);
       
@@ -107,8 +111,42 @@ function Checkout() {
   };
 
   const handleGoogleCalendarLink = () => {
-    // Simulate linking to Google Calendar
     setCalendarLinked(true);
+  };
+
+  // Coupon validation and application
+  const applyCoupon = () => {
+    const trimmedCode = couponCode.trim().toUpperCase();
+    
+    if (!trimmedCode) {
+      setCouponError('Please enter a coupon code');
+      return;
+    }
+
+    if (trimmedCode === 'LIVEMART10') {
+      const subtotal = getCartTotal();
+      const discountAmount = subtotal * 0.10; // 10% discount
+      setDiscount(discountAmount);
+      setAppliedCoupon(trimmedCode);
+      setCouponError('');
+      setCouponCode('');
+    } else {
+      setCouponError('Invalid coupon code');
+      setDiscount(0);
+      setAppliedCoupon(null);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setDiscount(0);
+    setCouponCode('');
+    setCouponError('');
+  };
+
+  const calculateTotal = () => {
+    const subtotal = getCartTotal();
+    return subtotal - discount + DELIVERY_FEE;
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -124,7 +162,7 @@ function Checkout() {
         return;
       }
 
-      const totalPrice = getCartTotal() + 40;
+      const totalPrice = calculateTotal();
       const orderNumber = `ORD-${Date.now()}`;
 
       const { data: userData } = await supabase
@@ -157,6 +195,8 @@ function Checkout() {
           delivery_lat: formData.latitude || 17.385044,
           delivery_lng: formData.longitude || 78.486671,
           estimated_delivery: estimatedDelivery,
+          coupon_code: appliedCoupon,
+          discount_amount: discount,
         })
         .select()
         .single();
@@ -192,7 +232,6 @@ function Checkout() {
         }
       }
 
-      // Save last purchased category for future recommendations
       if (cartItems.length > 0) {
         const lastItem = cartItems[cartItems.length - 1];
         localStorage.setItem('lastPurchasedCategory', lastItem.category);
@@ -222,10 +261,7 @@ function Checkout() {
   };
 
   const redirectToMockPayment = (orderId: string, amount: number) => {
-    // Create a mock payment gateway URL with order details
     const mockPaymentUrl = `/mock-payment?orderId=${orderId}&amount=${amount}&phone=${encodeURIComponent(formData.phone)}`;
-    
-    // Redirect to mock payment page
     navigate(mockPaymentUrl);
   };
 
@@ -247,7 +283,6 @@ function Checkout() {
     );
   }
 
-  // Get category names from cart for display
   const cartCategories = [...new Set(cartItems.map(item => item.category))];
   const categoryDisplay = cartCategories.length > 1 
     ? `${cartCategories[0]} and more`
@@ -402,19 +437,92 @@ function Checkout() {
                 ))}
               </div>
 
+              {/* Coupon Section */}
+              <div className="border-t pt-4 mb-4">
+                <label className="block font-semibold mb-2 text-gray-800 flex items-center gap-2">
+                  <Tag className="w-4 h-4 text-blue-600" />
+                  Have a Coupon?
+                </label>
+                
+                {!appliedCoupon ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={(e) => {
+                          setCouponCode(e.target.value.toUpperCase());
+                          setCouponError('');
+                        }}
+                        placeholder="Enter coupon code"
+                        className="flex-1 border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <button
+                        type="button"
+                        onClick={applyCoupon}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                    {couponError && (
+                      <p className="text-xs text-red-600 flex items-center gap-1">
+                        <X className="w-3 h-3" />
+                        {couponError}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500">💡 Try: LIVEMART10 for 10% off</p>
+                  </div>
+                ) : (
+                  <div className="bg-green-50 border-2 border-green-500 rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-green-600" />
+                        <span className="font-semibold text-green-800 text-sm">{appliedCoupon}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={removeCoupon}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-xs text-green-700 mt-1">10% discount applied!</p>
+                  </div>
+                )}
+              </div>
+
               <div className="border-t pt-3 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Subtotal</span>
                   <span className="font-semibold">₹{getCartTotal().toFixed(2)}</span>
                 </div>
+                
+                {discount > 0 && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Discount (10%)</span>
+                    <span className="font-semibold">-₹{discount.toFixed(2)}</span>
+                  </div>
+                )}
+                
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Delivery Fee</span>
-                  <span className="font-semibold">₹40.00</span>
+                  <span className="font-semibold">₹{DELIVERY_FEE.toFixed(2)}</span>
                 </div>
+                
                 <div className="border-t pt-2 flex justify-between">
                   <span className="font-bold text-lg text-gray-800">Total</span>
-                  <span className="font-bold text-2xl text-blue-600">₹{(getCartTotal() + 40).toFixed(2)}</span>
+                  <span className="font-bold text-2xl text-blue-600">₹{calculateTotal().toFixed(2)}</span>
                 </div>
+                
+                {discount > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                    <p className="text-xs text-green-800 font-semibold text-center">
+                      🎉 You saved ₹{discount.toFixed(2)}!
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -434,7 +542,6 @@ function Checkout() {
           showRecommendations ? 'translate-x-0' : 'translate-x-full'
         }`}>
           <div className="bg-white rounded-l-2xl shadow-2xl overflow-hidden" style={{ width: '320px' }}>
-            {/* Sidebar Header */}
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
@@ -451,7 +558,6 @@ function Checkout() {
               <p className="text-sm text-white/90">For your {categoryDisplay} purchase</p>
             </div>
 
-            {/* Recommended Products */}
             <div className="max-h-[500px] overflow-y-auto p-4 space-y-3">
               {recommendedProducts.map((product) => (
                 <div
@@ -487,7 +593,6 @@ function Checkout() {
         </div>
       )}
 
-      {/* Floating Bottom Button to Reopen Recommendations */}
       {!showRecommendations && recommendedProducts.length > 0 && (
         <button
           onClick={() => setShowRecommendations(true)}
@@ -499,7 +604,6 @@ function Checkout() {
         </button>
       )}
 
-      {/* Add subtle bounce animation */}
       <style>{`
         @keyframes bounce-subtle {
           0%, 100% {
