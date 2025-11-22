@@ -44,66 +44,249 @@ function ProtectedRoute({ children, allowedRoles, userRole }: { children: React.
 function Navbar({ isLoggedIn, onLogout, userRole }: { isLoggedIn: boolean; onLogout: () => void; userRole: UserRole; }) {
   const { getCartCount } = useCart();
   const navigate = useNavigate();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleLogoutClick = () => {
     onLogout();
     navigate("/");
+    setIsMenuOpen(false);
   };
 
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    setIsMenuOpen(false);
+  };
+
+  // If not logged in, show the original navbar
+  if (!isLoggedIn) {
+    return (
+      <nav className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg p-4 mb-0">
+        <div className="container mx-auto flex justify-between items-center">
+          <button onClick={() => navigate("/")} className="text-2xl font-bold text-white hover:scale-105 transition-transform cursor-pointer flex items-center gap-2">
+            🛒 Live MART
+          </button>
+          <div className="flex gap-4 items-center">
+            <button 
+              onClick={() => navigate('/faq')} 
+              className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold flex items-center gap-2"
+            >
+              ❓ FAQ
+            </button>
+            <button onClick={() => navigate('/login')} className="px-6 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold border border-white border-opacity-50">Sign In</button>
+            <button onClick={() => navigate('/signup')} className="px-6 py-2 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-500 transition-all font-semibold shadow-md">Sign Up</button>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
+  // Logged in navbar with hamburger menu
   return (
-    <nav className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg p-4 mb-0">
+    <nav className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg p-4 mb-0 relative">
       <div className="container mx-auto flex justify-between items-center">
-        <button onClick={() => navigate("/")} className="text-2xl font-bold text-white hover:scale-105 transition-transform cursor-pointer flex items-center gap-2">
+        <button onClick={() => handleNavigation("/")} className="text-2xl font-bold text-white hover:scale-105 transition-transform cursor-pointer flex items-center gap-2">
           🛒 Live MART
         </button>
-        <div className="flex gap-4 items-center">
-          {/* FAQ Link - Always visible */}
+        
+        {/* Cart Icon for Customers - Always visible on right */}
+        <div className="flex items-center gap-4">
+          {userRole === "customer" && (
+            <button onClick={() => handleNavigation('/cart')} className="relative px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-300 transition-all font-semibold">
+              🛒 Cart
+              {getCartCount() > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">{getCartCount()}</span>
+              )}
+            </button>
+          )}
+          
+          {/* Hamburger Menu Button */}
           <button 
-            onClick={() => navigate('/faq')} 
-            className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold flex items-center gap-2"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="text-white p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-all"
           >
-            ❓ FAQ
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {isMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
           </button>
+        </div>
+      </div>
 
-          {!isLoggedIn && (
-            <>
-              <button onClick={() => navigate('/login')} className="px-6 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold border border-white border-opacity-50">Sign In</button>
-              <button onClick={() => navigate('/signup')} className="px-6 py-2 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-500 transition-all font-semibold shadow-md">Sign Up</button>
-            </>
-          )}
-          {isLoggedIn && (
-            <>
-              {userRole === "customer" && (
-                <>
-                  <button onClick={() => navigate('/customer')} className="px-4 py-2 rounded-lg bg-white text-blue-600 shadow-md font-semibold hover:bg-opacity-90 transition-all">Shop Products</button>
-                  <button onClick={() => navigate('/orders')} className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold">My Orders</button>
-                  <button onClick={() => navigate('/queries')} className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold">💬 Queries</button>
-                  <button onClick={() => navigate('/cart')} className="relative px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-300 transition-all font-semibold">
-                    🛒 Cart
-                    {getCartCount() > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">{getCartCount()}</span>
-                    )}
-                  </button>
-                </>
-              )}
-              {userRole === "retailer" && (
-                <button onClick={() => navigate('/retailer')} className="px-4 py-2 rounded-lg bg-white text-purple-600 shadow-md font-semibold hover:bg-opacity-90 transition-all">Retailer Dashboard</button>
-              )}
-              {userRole === "delivery_partner" && (
-                <button onClick={() => navigate('/delivery-dashboard')} className="px-4 py-2 rounded-lg bg-white text-green-600 shadow-md font-semibold hover:bg-opacity-90 transition-all">Delivery Dashboard</button>
-              )}
-              {userRole === "wholesaler" && (
-                <button onClick={() => navigate('/wholesaler')} className="px-4 py-2 rounded-lg bg-white text-green-600 shadow-md font-semibold hover:bg-opacity-90 transition-all">Wholesaler Dashboard</button>
-              )}
-              
-              {/* Profile Button */}
-              <button onClick={() => navigate('/profile')} className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold flex items-center gap-2">
-                👤 Profile
-              </button>
-              
-              <button onClick={handleLogoutClick} className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all font-semibold shadow-md">Logout</button>
-            </>
-          )}
+      {/* Sliding Menu Overlay */}
+      <div 
+        className={`fixed inset-0 bg-black transition-opacity duration-300 z-40 ${isMenuOpen ? 'opacity-50' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => setIsMenuOpen(false)}
+      />
+
+      {/* Sliding Menu Panel */}
+      <div className={`fixed top-0 right-0 h-full w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-800">Menu</h2>
+            <button 
+              onClick={() => setIsMenuOpen(false)}
+              className="text-gray-600 hover:text-gray-800 p-2 hover:bg-gray-100 rounded-lg transition-all"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {userRole === "customer" && (
+              <>
+                <button 
+                  onClick={() => handleNavigation('/customer')} 
+                  className="w-full text-left px-4 py-3 hover:bg-blue-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  🛍️ Shop Products
+                </button>
+                <button 
+                  onClick={() => handleNavigation('/orders')} 
+                  className="w-full text-left px-4 py-3 hover:bg-blue-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  📦 My Orders
+                </button>
+                <button 
+                  onClick={() => handleNavigation('/queries')} 
+                  className="w-full text-left px-4 py-3 hover:bg-blue-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  💬 Queries
+                </button>
+                <button 
+                  onClick={() => handleNavigation('/faq')} 
+                  className="w-full text-left px-4 py-3 hover:bg-blue-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  ❓ FAQ
+                </button>
+                <div className="border-t border-gray-200 my-4"></div>
+                <button 
+                  onClick={() => handleNavigation('/profile')} 
+                  className="w-full text-left px-4 py-3 hover:bg-blue-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  👤 Profile
+                </button>
+                <button 
+                  onClick={handleLogoutClick} 
+                  className="w-full text-left px-4 py-3 hover:bg-red-50 rounded-lg transition-all flex items-center gap-3 text-red-600 font-semibold"
+                >
+                  🚪 Logout
+                </button>
+              </>
+            )}
+
+            {userRole === "retailer" && (
+              <>
+                <button 
+                  onClick={() => handleNavigation('/retailer')} 
+                  className="w-full text-left px-4 py-3 hover:bg-purple-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  📊 Retailer Dashboard
+                </button>
+                <button 
+                  onClick={() => handleNavigation('/order-management')} 
+                  className="w-full text-left px-4 py-3 hover:bg-purple-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  📋 Order Management
+                </button>
+                <button 
+                  onClick={() => handleNavigation('/retailer/queries')} 
+                  className="w-full text-left px-4 py-3 hover:bg-purple-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  💬 Query Management
+                </button>
+                <button 
+                  onClick={() => handleNavigation('/faq')} 
+                  className="w-full text-left px-4 py-3 hover:bg-purple-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  ❓ FAQ
+                </button>
+                <div className="border-t border-gray-200 my-4"></div>
+                <button 
+                  onClick={() => handleNavigation('/profile')} 
+                  className="w-full text-left px-4 py-3 hover:bg-purple-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  👤 Profile
+                </button>
+                <button 
+                  onClick={handleLogoutClick} 
+                  className="w-full text-left px-4 py-3 hover:bg-red-50 rounded-lg transition-all flex items-center gap-3 text-red-600 font-semibold"
+                >
+                  🚪 Logout
+                </button>
+              </>
+            )}
+
+            {userRole === "wholesaler" && (
+              <>
+                <button 
+                  onClick={() => handleNavigation('/wholesaler')} 
+                  className="w-full text-left px-4 py-3 hover:bg-green-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  🏭 Wholesaler Dashboard
+                </button>
+                <button 
+                  onClick={() => handleNavigation('/order-management')} 
+                  className="w-full text-left px-4 py-3 hover:bg-green-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  📋 Order Management
+                </button>
+                <button 
+                  onClick={() => handleNavigation('/faq')} 
+                  className="w-full text-left px-4 py-3 hover:bg-green-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  ❓ FAQ
+                </button>
+                <div className="border-t border-gray-200 my-4"></div>
+                <button 
+                  onClick={() => handleNavigation('/profile')} 
+                  className="w-full text-left px-4 py-3 hover:bg-green-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  👤 Profile
+                </button>
+                <button 
+                  onClick={handleLogoutClick} 
+                  className="w-full text-left px-4 py-3 hover:bg-red-50 rounded-lg transition-all flex items-center gap-3 text-red-600 font-semibold"
+                >
+                  🚪 Logout
+                </button>
+              </>
+            )}
+
+            {userRole === "delivery_partner" && (
+              <>
+                <button 
+                  onClick={() => handleNavigation('/delivery-dashboard')} 
+                  className="w-full text-left px-4 py-3 hover:bg-green-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  🚚 Delivery Dashboard
+                </button>
+                <button 
+                  onClick={() => handleNavigation('/faq')} 
+                  className="w-full text-left px-4 py-3 hover:bg-green-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  ❓ FAQ
+                </button>
+                <div className="border-t border-gray-200 my-4"></div>
+                <button 
+                  onClick={() => handleNavigation('/profile')} 
+                  className="w-full text-left px-4 py-3 hover:bg-green-50 rounded-lg transition-all flex items-center gap-3 text-gray-700 font-semibold"
+                >
+                  👤 Profile
+                </button>
+                <button 
+                  onClick={handleLogoutClick} 
+                  className="w-full text-left px-4 py-3 hover:bg-red-50 rounded-lg transition-all flex items-center gap-3 text-red-600 font-semibold"
+                >
+                  🚪 Logout
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </nav>
