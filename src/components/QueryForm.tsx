@@ -30,6 +30,7 @@ const QueryForm = ({ onClose, onSuccess }: QueryFormProps) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadOrdersAndProducts();
@@ -37,38 +38,77 @@ const QueryForm = ({ onClose, onSuccess }: QueryFormProps) => {
 
   const loadOrdersAndProducts = async () => {
     try {
+      setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log('❌ No user found');
+        setLoading(false);
+        return;
+      }
 
-      const { data: userData } = await supabase
+      console.log('✅ User authenticated:', user.id);
+
+      const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id')
         .eq('auth_id', user.id)
         .single();
 
-      if (!userData) return;
+      if (userError) {
+        console.error('❌ Error fetching user:', userError);
+        setLoading(false);
+        return;
+      }
 
-      // Fetch user's orders
-      const { data: ordersData } = await supabase
+      if (!userData) {
+        console.log('❌ No user data found');
+        setLoading(false);
+        return;
+      }
+
+      console.log('✅ User ID from users table:', userData.id);
+
+      // Fetch user's orders with detailed error logging
+      const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select('id, order_number')
-        .eq('customer_id', userData.id)
+        .select('id, order_number, customer_id')
+        .eq('customer_id', user.id)
         .order('created_at', { ascending: false })
         .limit(10);
 
-      if (ordersData) setOrders(ordersData);
+      if (ordersError) {
+        console.error('❌ Error fetching orders:', ordersError);
+        console.error('Error details:', {
+          message: ordersError.message,
+          details: ordersError.details,
+          hint: ordersError.hint,
+          code: ordersError.code
+        });
+      } else {
+        console.log('✅ Orders query successful');
+        console.log('📦 Orders fetched:', ordersData);
+        console.log('📊 Number of orders:', ordersData?.length || 0);
+        setOrders(ordersData || []);
+      }
 
       // Fetch available products
-      const { data: productsData } = await supabase
+      const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select('id, name')
         .eq('is_deleted', false)
         .order('name')
         .limit(50);
 
-      if (productsData) setProducts(productsData);
+      if (productsError) {
+        console.error('❌ Error fetching products:', productsError);
+      } else {
+        console.log('✅ Products fetched:', productsData?.length || 0, 'products');
+        setProducts(productsData || []);
+      }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('❌ Unexpected error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -113,8 +153,17 @@ const QueryForm = ({ onClose, onSuccess }: QueryFormProps) => {
           </button>
         </div>
 
+        
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+              <p className="text-gray-600">Loading form data...</p>
+            </div>
+          ) : (
+            <>
           {/* Subject */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -189,19 +238,25 @@ const QueryForm = ({ onClose, onSuccess }: QueryFormProps) => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Related to Order (Optional)
             </label>
-            <select
-              value={formData.orderId}
-              onChange={(e) => setFormData({ ...formData, orderId: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={submitting}
-            >
-              <option value="">Select an order (if applicable)</option>
-              {orders.map((order) => (
-                <option key={order.id} value={order.id}>
-                  Order #{order.order_number}
-                </option>
-              ))}
-            </select>
+            {orders.length === 0 ? (
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
+                📦 You don't have any orders yet. Place an order to link it to a query.
+              </div>
+            ) : (
+              <select
+                value={formData.orderId}
+                onChange={(e) => setFormData({ ...formData, orderId: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={submitting}
+              >
+                <option value="">None - General query</option>
+                {orders.map((order) => (
+                  <option key={order.id} value={order.id}>
+                    Order #{order.order_number}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Related Product */}
@@ -209,28 +264,34 @@ const QueryForm = ({ onClose, onSuccess }: QueryFormProps) => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Related to Product (Optional)
             </label>
-            <select
-              value={formData.productId}
-              onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={submitting}
-            >
-              <option value="">Select a product (if applicable)</option>
-              {products.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name}
-                </option>
-              ))}
-            </select>
+            {products.length === 0 ? (
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
+                🛍️ No products available to select at the moment.
+              </div>
+            ) : (
+              <select
+                value={formData.productId}
+                onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={submitting}
+              >
+                <option value="">None - General query</option>
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4 border-t border-gray-200">
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || loading}
               className={`flex-1 py-3 rounded-lg font-semibold transition-colors ${
-                submitting
+                submitting || loading
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
@@ -250,6 +311,8 @@ const QueryForm = ({ onClose, onSuccess }: QueryFormProps) => {
               Cancel
             </button>
           </div>
+            </>
+          )}
         </form>
       </div>
     </div>
