@@ -74,7 +74,7 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: "http://localhost:5173/", // replace with your app URL when deployed
+      redirectTo: "https://live-mart-tawny.vercel.app", // replace with your app URL when deployed
     },
   })
 
