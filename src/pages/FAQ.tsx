@@ -253,8 +253,8 @@ const FAQ: React.FC = () => {
               <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <MessageCircle className="w-8 h-8" />
               </div>
-              <h3 className="font-bold text-lg mb-2">Live Chat</h3>
-              <p className="text-white/80 mb-4">Get instant support</p>
+              <h3 className="font-bold text-lg mb-2">Chat</h3>
+              <p className="text-white/80 mb-4">Get support</p>
               <button className="text-white font-semibold hover:underline">
                 Start Chat
               </button>
