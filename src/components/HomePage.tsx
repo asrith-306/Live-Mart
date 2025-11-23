@@ -1,5 +1,3 @@
-//new branch
-
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -152,11 +150,15 @@ const HomePage = ({ isLoggedIn = false }: HomePageProps) => {
               </div>
             </div>
 
-            {/* Hero Image Placeholder */}
+            {/* Hero Image */}
             <div className="relative animate-float z-0">
               <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-accent/20 blur-3xl rounded-full"></div>
-              <div className="relative rounded-3xl shadow-2xl w-full h-96 bg-gradient-to-br from-primary/10 via-accent/10 to-success/10 flex items-center justify-center">
-                <ShoppingBag className="h-32 w-32 text-primary/20" />
+              <div className="relative rounded-3xl shadow-2xl overflow-hidden">
+                <img 
+                  src="/hero-banner.png" 
+                  alt="Live Mart Hero Banner" 
+                  className="w-full h-auto object-cover"
+                />
               </div>
             </div>
           </div>
@@ -347,9 +349,9 @@ const HomePage = ({ isLoggedIn = false }: HomePageProps) => {
                     Get Started Free
                   </Button>
                   <Button
-                     size="lg"
-                      onClick={() => navigate("/login")}
-                      className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-6 shadow-xl hover:shadow-2xl transition-all"
+                    size="lg"
+                    onClick={() => navigate("/login")}
+                    className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-6 shadow-xl hover:shadow-2xl transition-all"
                   >
                     Sign In
                   </Button>

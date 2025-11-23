@@ -12,9 +12,10 @@ import {
   permanentlyDeleteProduct,
   Product 
 } from '@/services/productService';
+import { fetchRetailerEarnings, EarningsData } from '@/services/earningsService';
 import ProductCard from '@/components/products/ProductCard';
 import ProductForm from '@/components/products/ProductForm';
-import { Package, ShoppingCart, Truck, Eye, EyeOff } from 'lucide-react';
+import { Package, ShoppingCart, Truck, Eye, EyeOff, MessageCircle, DollarSign } from 'lucide-react';
 
 const RetailerDashboard = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -30,12 +31,28 @@ const RetailerDashboard = () => {
     sellingPrice: ''
   });
   const [submitting, setSubmitting] = useState(false);
-  const [proxyMode, setProxyMode] = useState(false); // New state for proxy availability
+  const [proxyMode, setProxyMode] = useState(false);
+  const [earnings, setEarnings] = useState<EarningsData | null>(null);
+  const [earningsLoading, setEarningsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     loadProducts();
   }, [viewMode]);
+
+  useEffect(() => {
+    const loadEarnings = async () => {
+      try {
+        const data = await fetchRetailerEarnings();
+        setEarnings(data);
+      } catch (error) {
+        console.error('Failed to load earnings:', error);
+      } finally {
+        setEarningsLoading(false);
+      }
+    };
+    loadEarnings();
+  }, []);
 
   const loadProducts = async () => {
     try {
@@ -43,7 +60,6 @@ const RetailerDashboard = () => {
       if (viewMode === 'active') {
         const data = await fetchProducts();
         setProducts(data);
-        // Also load wholesaler products for proxy display
         const wholesalerData = await fetchWholesalerProducts();
         setWholesalerProducts(wholesalerData);
       } else if (viewMode === 'trash') {
@@ -62,7 +78,6 @@ const RetailerDashboard = () => {
   };
 
   const handleAddFromWholesaler = (product: Product) => {
-    console.log('Opening modal for product:', product);
     setSelectedWholesalerProduct(product);
     setOrderForm({
       quantity: '',
@@ -80,28 +95,16 @@ const RetailerDashboard = () => {
     const quantityStr = orderForm.quantity.trim();
     const sellingPriceStr = orderForm.sellingPrice.trim();
 
-    if (!quantityStr) {
-      alert('Please enter a quantity');
-      return;
-    }
-
-    if (!sellingPriceStr) {
-      alert('Please enter a selling price');
+    if (!quantityStr || !sellingPriceStr) {
+      alert('Please enter both quantity and selling price');
       return;
     }
 
     const quantity = parseInt(quantityStr, 10);
     const sellingPrice = parseFloat(sellingPriceStr);
 
-    console.log('Parsed values:', { quantity, sellingPrice, isNaNQty: isNaN(quantity), isNaNPrice: isNaN(sellingPrice) });
-
-    if (isNaN(quantity) || quantity <= 0) {
-      alert('Please enter a valid quantity (must be a positive number)');
-      return;
-    }
-
-    if (isNaN(sellingPrice) || sellingPrice <= 0) {
-      alert('Please enter a valid selling price (must be a positive number)');
+    if (isNaN(quantity) || quantity <= 0 || isNaN(sellingPrice) || sellingPrice <= 0) {
+      alert('Please enter valid quantity and selling price');
       return;
     }
 
@@ -110,53 +113,22 @@ const RetailerDashboard = () => {
       return;
     }
 
-    if (!selectedWholesalerProduct.id) {
-      alert('Invalid product: missing product ID');
-      console.error('Product missing ID:', selectedWholesalerProduct);
-      return;
-    }
-
-    if (!selectedWholesalerProduct.wholesaler_id) {
-      alert('Invalid product: missing wholesaler ID');
-      console.error('Product missing wholesaler_id:', selectedWholesalerProduct);
-      return;
-    }
-
     try {
       setSubmitting(true);
-      console.log('Starting order process:', {
-        productId: selectedWholesalerProduct.id,
-        productName: selectedWholesalerProduct.name,
-        wholesalerId: selectedWholesalerProduct.wholesaler_id,
-        quantity,
-        sellingPrice,
-        wholesalerPrice: selectedWholesalerProduct.price
-      });
-
       await addRetailerProductFromWholesaler(
         selectedWholesalerProduct,
         quantity,
         sellingPrice
       );
-
-      console.log('✅ Product added successfully!');
       
       setShowAddFromWholesaler(false);
       setSelectedWholesalerProduct(null);
       setOrderForm({ quantity: '', sellingPrice: '' });
-      
       setViewMode('active');
-      
       alert('Product added to your inventory successfully!');
     } catch (error: any) {
-      console.error('❌ Failed to add product:', error);
-      console.error('Error message:', error?.message);
-      console.error('Error details:', error?.details);
-      console.error('Error hint:', error?.hint);
-      console.error('Error code:', error?.code);
-      
-      const errorMessage = error?.message || error?.details || 'Unknown error occurred';
-      alert(`Failed to add product: ${errorMessage}\n\nCheck console for more details.`);
+      console.error('Failed to add product:', error);
+      alert(`Failed to add product: ${error?.message || 'Unknown error'}`);
     } finally {
       setSubmitting(false);
     }
@@ -165,12 +137,10 @@ const RetailerDashboard = () => {
   const handleUpdateProduct = async (product: Product) => {
     try {
       if (!editingProduct?.id) {
-        console.error('No product ID found for update');
         alert('Error: No product ID');
         return;
       }
       
-      console.log('Updating product:', editingProduct.id, product);
       await updateProduct(editingProduct.id, product);
       setShowForm(false);
       setEditingProduct(undefined);
@@ -178,20 +148,12 @@ const RetailerDashboard = () => {
       alert('Product updated successfully!');
     } catch (error) {
       console.error('Failed to update product:', error);
-      alert('Failed to update product. Check console for details.');
+      alert('Failed to update product.');
     }
   };
 
   const handleDeleteProduct = async (id: string) => {
-    if (!id) {
-      console.error('No product ID provided');
-      alert('Error: No product ID');
-      return;
-    }
-
-    if (!window.confirm('Move this product to trash?')) {
-      return;
-    }
+    if (!window.confirm('Move this product to trash?')) return;
     
     try {
       await deleteProduct(id);
@@ -199,20 +161,12 @@ const RetailerDashboard = () => {
       alert('Product moved to trash!');
     } catch (error) {
       console.error('Failed to delete product:', error);
-      alert('Failed to delete product. Check console for details.');
+      alert('Failed to delete product.');
     }
   };
 
   const handleRestoreProduct = async (id: string) => {
-    if (!id) {
-      console.error('No product ID provided');
-      alert('Error: No product ID');
-      return;
-    }
-
-    if (!window.confirm('Restore this product?')) {
-      return;
-    }
+    if (!window.confirm('Restore this product?')) return;
     
     try {
       await restoreProduct(id);
@@ -220,20 +174,12 @@ const RetailerDashboard = () => {
       alert('Product restored successfully!');
     } catch (error) {
       console.error('Failed to restore product:', error);
-      alert('Failed to restore product. Check console for details.');
+      alert('Failed to restore product.');
     }
   };
 
   const handlePermanentDelete = async (id: string) => {
-    if (!id) {
-      console.error('No product ID provided');
-      alert('Error: No product ID');
-      return;
-    }
-
-    if (!window.confirm('⚠️ PERMANENTLY DELETE this product? This cannot be undone!')) {
-      return;
-    }
+    if (!window.confirm('⚠️ PERMANENTLY DELETE this product? This cannot be undone!')) return;
     
     try {
       await permanentlyDeleteProduct(id);
@@ -241,7 +187,7 @@ const RetailerDashboard = () => {
       alert('Product permanently deleted!');
     } catch (error) {
       console.error('Failed to permanently delete product:', error);
-      alert('Failed to permanently delete product. Check console for details.');
+      alert('Failed to permanently delete product.');
     }
   };
 
@@ -255,36 +201,59 @@ const RetailerDashboard = () => {
     setEditingProduct(undefined);
   };
 
-  // Get combined products for proxy mode
   const getCombinedProducts = () => {
-    if (!proxyMode) {
-      return products;
-    }
+    if (!proxyMode) return products;
 
-    // Get IDs of products already in retailer inventory
     const retailerProductIds = new Set(products.map(p => p.id));
-    
-    // Filter wholesaler products that aren't already in retailer inventory
     const availableWholesalerProducts = wholesalerProducts.filter(
       wp => !retailerProductIds.has(wp.id)
     );
 
-    // Combine retailer products with available wholesaler products
     return [...products, ...availableWholesalerProducts];
   };
 
   const displayProducts = getCombinedProducts();
 
   if (loading) {
-    return <div className="p-8 text-center">Loading products...</div>;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <p className="mt-4 text-muted-foreground font-semibold">Loading products...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-8">
+    <div className="min-h-screen bg-background p-8">
       {/* Quick Actions Banner */}
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-6 mb-6">
+      <div className="gradient-hero rounded-lg shadow-lg p-6 mb-6">
         <h2 className="text-white text-2xl font-bold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {/* Total Earnings */}
+          <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-4 text-white">
+            <div className="flex items-center gap-3 mb-2">
+              <DollarSign className="w-6 h-6" />
+              <h3 className="font-semibold text-lg">Earnings</h3>
+            </div>
+            {earningsLoading ? (
+              <p className="text-sm text-white text-opacity-90 mb-3">Loading...</p>
+            ) : (
+              <>
+                <p className="text-2xl font-bold mb-1">
+                  ₹{earnings?.totalEarnings.toLocaleString('en-IN') || '0'}
+                </p>
+                <p className="text-xs text-white text-opacity-75 mb-1">
+                  Pending: ₹{earnings?.pendingEarnings.toLocaleString('en-IN') || '0'}
+                </p>
+                <div className="text-xs text-white text-opacity-75">
+                  {earnings?.totalOrders || 0} completed orders
+                </div>
+              </>
+            )}
+          </div>
+
           {/* Manage Products */}
           <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-4 text-white">
             <div className="flex items-center gap-3 mb-2">
@@ -296,7 +265,7 @@ const RetailerDashboard = () => {
             </p>
             <button
               onClick={() => setViewMode('wholesaler')}
-              className="w-full bg-white text-blue-600 py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
+              className="w-full bg-white text-primary py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
             >
               Source Products
             </button>
@@ -313,7 +282,7 @@ const RetailerDashboard = () => {
             </p>
             <button
               onClick={() => navigate('/order-management')}
-              className="w-full bg-white text-purple-600 py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
+              className="w-full bg-white text-secondary py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
             >
               View Orders
             </button>
@@ -330,9 +299,26 @@ const RetailerDashboard = () => {
             </p>
             <button
               onClick={() => navigate('/order-management')}
-              className="w-full bg-white text-green-600 py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
+              className="w-full bg-white text-accent py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
             >
               Manage Delivery
+            </button>
+          </div>
+
+          {/* Customer Queries */}
+          <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-4 text-white">
+            <div className="flex items-center gap-3 mb-2">
+              <MessageCircle className="w-6 h-6" />
+              <h3 className="font-semibold text-lg">Queries</h3>
+            </div>
+            <p className="text-sm text-white text-opacity-90 mb-3">
+              Customer support queries
+            </p>
+            <button
+              onClick={() => navigate('/retailer/queries')}
+              className="w-full bg-white text-accent py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
+            >
+              View Queries
             </button>
           </div>
         </div>
@@ -341,36 +327,36 @@ const RetailerDashboard = () => {
       {/* Header with View Toggle and Proxy Mode */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
-          <h1 className="text-3xl font-bold">Product Inventory</h1>
+          <h1 className="text-3xl font-bold text-foreground">Product Inventory</h1>
           
           {/* View Mode Toggle */}
-          <div className="flex bg-gray-200 rounded-lg p-1">
+          <div className="flex bg-muted rounded-lg p-1">
             <button
               onClick={() => setViewMode('active')}
-              className={`px-4 py-2 rounded-md transition-colors ${
+              className={`px-4 py-2 rounded-md transition-all ${
                 viewMode === 'active' 
-                  ? 'bg-white text-blue-600 font-semibold shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-800'
+                  ? 'bg-card text-primary font-semibold shadow-sm' 
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               My Products
             </button>
             <button
               onClick={() => setViewMode('wholesaler')}
-              className={`px-4 py-2 rounded-md transition-colors ${
+              className={`px-4 py-2 rounded-md transition-all ${
                 viewMode === 'wholesaler' 
-                  ? 'bg-white text-green-600 font-semibold shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-800'
+                  ? 'bg-card text-accent font-semibold shadow-sm' 
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               🏭 Wholesaler Catalog
             </button>
             <button
               onClick={() => setViewMode('trash')}
-              className={`px-4 py-2 rounded-md transition-colors ${
+              className={`px-4 py-2 rounded-md transition-all ${
                 viewMode === 'trash' 
-                  ? 'bg-white text-red-600 font-semibold shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-800'
+                  ? 'bg-card text-secondary font-semibold shadow-sm' 
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               🗑️ Trash
@@ -378,14 +364,14 @@ const RetailerDashboard = () => {
           </div>
         </div>
 
-        {/* Proxy Availability Toggle (only show in active view) */}
+        {/* Proxy Availability Toggle */}
         {viewMode === 'active' && (
           <button
             onClick={() => setProxyMode(!proxyMode)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all ${
               proxyMode
-                ? 'bg-green-500 text-white hover:bg-green-600'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ? 'bg-accent text-white hover:bg-[hsl(var(--accent-hover))]'
+                : 'bg-muted text-foreground hover:bg-muted/80'
             }`}
           >
             {proxyMode ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
@@ -396,14 +382,14 @@ const RetailerDashboard = () => {
 
       {/* Proxy Mode Info Banner */}
       {viewMode === 'active' && proxyMode && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+        <div className="mb-4 p-4 alert-success rounded-lg">
           <div className="flex items-start gap-3">
-            <Eye className="w-5 h-5 text-green-600 mt-0.5" />
+            <Eye className="w-5 h-5 mt-0.5" />
             <div>
-              <p className="text-green-800 font-semibold">
+              <p className="font-semibold">
                 Proxy Availability Mode Active
               </p>
-              <p className="text-green-700 text-sm mt-1">
+              <p className="text-sm mt-1">
                 Showing your inventory + available wholesaler products. Wholesaler products are marked with a "📦 Available via Wholesaler" badge. 
                 When customers order these items, they will be automatically sourced from the wholesaler.
               </p>
@@ -417,17 +403,17 @@ const RetailerDashboard = () => {
         <>
           {displayProducts.length === 0 && (
             <div className="text-center mt-12">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 max-w-2xl mx-auto">
+              <div className="bg-primary/10 border border-primary/20 rounded-lg p-8 max-w-2xl mx-auto">
                 <div className="text-6xl mb-4">🏭</div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                <h3 className="text-xl font-semibold text-foreground mb-2">
                   No Products in Your Inventory
                 </h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-muted-foreground mb-4">
                   As a retailer, you source products from wholesalers. Browse the wholesaler catalog to add products to your inventory.
                 </p>
                 <button
                   onClick={() => setViewMode('wholesaler')}
-                  className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 font-semibold"
+                  className="bg-accent text-white px-6 py-3 rounded-lg hover:bg-[hsl(var(--accent-hover))] font-semibold transition-all"
                 >
                   Browse Wholesaler Catalog →
                 </button>
@@ -440,9 +426,8 @@ const RetailerDashboard = () => {
                 const isWholesalerProduct = !products.find(p => p.id === product.id);
                 return (
                   <div key={product.id} className="relative">
-                    {/* Wholesaler badge for proxy products */}
                     {isWholesalerProduct && (
-                      <div className="absolute top-2 left-2 z-10 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
+                      <div className="absolute top-2 left-2 z-10 bg-accent text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
                         📦 Available via Wholesaler
                       </div>
                     )}
@@ -454,12 +439,11 @@ const RetailerDashboard = () => {
                       isRetailer={true}
                       isTrashView={false}
                     />
-                    {/* Add quick order button for wholesaler products */}
                     {isWholesalerProduct && (
                       <div className="absolute bottom-2 left-2 right-2">
                         <button
                           onClick={() => handleAddFromWholesaler(product)}
-                          className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm font-semibold"
+                          className="w-full bg-primary text-white py-2 rounded-lg hover:bg-[hsl(var(--primary-hover))] transition-all text-sm font-semibold"
                         >
                           Add to Inventory
                         </button>
@@ -476,14 +460,14 @@ const RetailerDashboard = () => {
       {/* Wholesaler Products View */}
       {viewMode === 'wholesaler' && (
         <div>
-          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-blue-800">
+          <div className="mb-4 p-4 alert-success rounded-lg">
+            <p>
               <strong>Browse wholesaler products</strong> - Select products to add to your inventory
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {wholesalerProducts.map(product => (
-              <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+              <div key={product.id} className="bg-card border border-border rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
                 {product.image_url && (
                   <img 
                     src={product.image_url} 
@@ -492,16 +476,16 @@ const RetailerDashboard = () => {
                   />
                 )}
                 <div className="p-4">
-                  <h3 className="font-bold text-lg mb-2">{product.name}</h3>
-                  <p className="text-sm text-gray-600 mb-2">{product.description}</p>
-                  <p className="text-sm text-gray-500 mb-1">Category: {product.category}</p>
+                  <h3 className="font-bold text-lg text-foreground mb-2">{product.name}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">{product.description}</p>
+                  <p className="text-sm text-muted-foreground mb-1">Category: {product.category}</p>
                   <div className="flex justify-between items-center mb-3">
-                    <span className="text-xl font-bold text-green-600">₹{product.price}</span>
-                    <span className="text-sm text-gray-600">Stock: {product.stock}</span>
+                    <span className="text-xl font-bold text-accent">₹{product.price}</span>
+                    <span className="text-sm text-muted-foreground">Stock: {product.stock}</span>
                   </div>
                   <button
                     onClick={() => handleAddFromWholesaler(product)}
-                    className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                    className="w-full bg-primary text-white py-2 rounded-lg hover:bg-[hsl(var(--primary-hover))] transition-all"
                   >
                     Add to My Inventory
                   </button>
@@ -510,7 +494,7 @@ const RetailerDashboard = () => {
             ))}
           </div>
           {wholesalerProducts.length === 0 && (
-            <div className="text-center text-gray-500 mt-12">
+            <div className="text-center text-muted-foreground mt-12">
               No wholesaler products available at the moment.
             </div>
           )}
@@ -533,7 +517,7 @@ const RetailerDashboard = () => {
             ))}
           </div>
           {products.length === 0 && (
-            <div className="text-center text-gray-500 mt-12">
+            <div className="text-center text-muted-foreground mt-12">
               Trash is empty. Deleted products will appear here.
             </div>
           )}
@@ -552,13 +536,13 @@ const RetailerDashboard = () => {
       {/* Add from Wholesaler Modal */}
       {showAddFromWholesaler && selectedWholesalerProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 className="text-2xl font-bold mb-4">Add Product to Inventory</h2>
+          <div className="bg-card border border-border rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold text-foreground mb-4">Add Product to Inventory</h2>
             
-            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-semibold text-lg">{selectedWholesalerProduct.name}</h3>
-              <p className="text-sm text-gray-600 mt-1">{selectedWholesalerProduct.description}</p>
-              <div className="mt-2 flex justify-between text-sm">
+            <div className="mb-4 p-4 bg-muted rounded-lg">
+              <h3 className="font-semibold text-lg text-foreground">{selectedWholesalerProduct.name}</h3>
+              <p className="text-sm text-muted-foreground mt-1">{selectedWholesalerProduct.description}</p>
+              <div className="mt-2 flex justify-between text-sm text-muted-foreground">
                 <span>Wholesaler Price: ₹{selectedWholesalerProduct.price}</span>
                 <span>Available: {selectedWholesalerProduct.stock} units</span>
               </div>
@@ -566,7 +550,7 @@ const RetailerDashboard = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Quantity to Order *
                 </label>
                 <input
@@ -580,7 +564,7 @@ const RetailerDashboard = () => {
                       setOrderForm({...orderForm, quantity: value});
                     }
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 bg-background border border-input rounded-lg focus-primary transition-base text-foreground"
                   placeholder="Enter quantity"
                   required
                   disabled={submitting}
@@ -588,7 +572,7 @@ const RetailerDashboard = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Your Selling Price (₹) *
                 </label>
                 <input
@@ -602,19 +586,19 @@ const RetailerDashboard = () => {
                       setOrderForm({...orderForm, sellingPrice: value});
                     }
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 bg-background border border-input rounded-lg focus-primary transition-base text-foreground"
                   placeholder="Enter your selling price"
                   required
                   disabled={submitting}
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Cost: ₹{selectedWholesalerProduct.price} | 
                   Suggested: ₹{(selectedWholesalerProduct.price * 1.2).toFixed(2)} (20% markup)
                 </p>
               </div>
 
               {orderForm.quantity && orderForm.sellingPrice && (
-                <div className="p-3 bg-blue-50 rounded-lg">
+                <div className="p-3 alert-success rounded-lg">
                   <div className="flex justify-between text-sm mb-1">
                     <span>Total Cost:</span>
                     <span className="font-semibold">
@@ -627,7 +611,7 @@ const RetailerDashboard = () => {
                       ₹{(parseFloat(orderForm.sellingPrice || '0') * parseInt(orderForm.quantity || '0')).toFixed(2)}
                     </span>
                   </div>
-                  <div className="flex justify-between text-sm font-bold text-green-600 border-t border-blue-200 pt-1 mt-1">
+                  <div className="flex justify-between text-sm font-bold text-accent border-t border-border pt-1 mt-1">
                     <span>Potential Profit:</span>
                     <span>
                       ₹{((parseFloat(orderForm.sellingPrice || '0') - selectedWholesalerProduct.price) * 
@@ -642,10 +626,10 @@ const RetailerDashboard = () => {
               <button
                 onClick={handleConfirmAddFromWholesaler}
                 disabled={submitting}
-                className={`flex-1 py-2 rounded-lg transition-colors ${
+                className={`flex-1 py-2 rounded-lg font-semibold transition-all ${
                   submitting 
-                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
-                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                    ? 'bg-muted text-muted-foreground cursor-not-allowed' 
+                    : 'bg-primary text-white hover:bg-[hsl(var(--primary-hover))]'
                 }`}
               >
                 {submitting ? 'Processing...' : 'Confirm & Add'}
@@ -657,10 +641,10 @@ const RetailerDashboard = () => {
                   setOrderForm({ quantity: '', sellingPrice: '' });
                 }}
                 disabled={submitting}
-                className={`flex-1 py-2 rounded-lg transition-colors ${
+                className={`flex-1 py-2 rounded-lg transition-all ${
                   submitting
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                    : 'bg-muted text-foreground hover:bg-muted/80'
                 }`}
               >
                 Cancel

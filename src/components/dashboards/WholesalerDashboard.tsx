@@ -1,6 +1,7 @@
 // src/components/dashboards/WholesalerDashboard.tsx
 import { useState, useEffect } from 'react';
 import { supabase } from '../../utils/supabaseClient';
+import { fetchWholesalerEarnings, EarningsData } from '@/services/earningsService';
 
 interface Product {
   id: string;
@@ -77,6 +78,8 @@ export default function WholesalerDashboard() {
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [earnings, setEarnings] = useState<EarningsData | null>(null);
+  const [earningsLoading, setEarningsLoading] = useState(true);
   
   const [productForm, setProductForm] = useState<ProductForm>({
     name: '',
@@ -94,8 +97,20 @@ export default function WholesalerDashboard() {
   useEffect(() => {
     if (currentUserId) {
       fetchData();
+      loadEarnings();
     }
   }, [currentUserId, activeTab]);
+
+  const loadEarnings = async () => {
+    try {
+      const data = await fetchWholesalerEarnings();
+      setEarnings(data);
+    } catch (error) {
+      console.error('Failed to load earnings:', error);
+    } finally {
+      setEarningsLoading(false);
+    }
+  };
 
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -119,8 +134,6 @@ export default function WholesalerDashboard() {
   const fetchProducts = async () => {
     if (!currentUserId) return;
 
-    console.log('Fetching products for wholesaler:', currentUserId);
-
     const { data, error } = await supabase
       .from('products')
       .select('*')
@@ -132,10 +145,7 @@ export default function WholesalerDashboard() {
       console.error('Error fetching products:', error);
       setProducts([]);
     } else if (data) {
-      console.log('Raw fetched products:', data);
-      // CRITICAL: Filter to only show wholesaler's original inventory (retailer_id must be null)
       const wholesalerOnly = data.filter(p => p.retailer_id === null);
-      console.log('Filtered to wholesaler-only products:', wholesalerOnly);
       setProducts(wholesalerOnly as Product[]);
     } else {
       setProducts([]);
@@ -145,9 +155,6 @@ export default function WholesalerDashboard() {
   const fetchRetailers = async () => {
     if (!currentUserId) return;
 
-    console.log('Fetching retailers for wholesaler:', currentUserId);
-
-    // Get all retailer orders for this wholesaler
     const { data: orders, error: ordersError } = await supabase
       .from('retailer_orders')
       .select('retailer_id, retailer_name')
@@ -159,41 +166,30 @@ export default function WholesalerDashboard() {
       return;
     }
 
-    console.log('Found orders:', orders);
-
     if (!orders || orders.length === 0) {
-      console.log('No orders found');
       setRetailers([]);
       return;
     }
 
-    // Get unique retailer auth_ids
     const retailerAuthIds = [...new Set(orders.map(o => o.retailer_id).filter(Boolean))];
-    console.log('Unique retailer auth_ids:', retailerAuthIds);
 
     if (retailerAuthIds.length === 0) {
       setRetailers([]);
       return;
     }
 
-    // CRITICAL FIX: Query by auth_id, not id
     const { data: users } = await supabase
       .from('users')
       .select('id, email, name, auth_id')
-      .in('auth_id', retailerAuthIds);  // Changed from 'id' to 'auth_id'
-
-    console.log('Users who placed orders:', users);
+      .in('auth_id', retailerAuthIds);
 
     if (!users || users.length === 0) {
-      console.log('No matching users found');
       setRetailers([]);
       return;
     }
 
     const emails = users.map(u => u.email).filter(Boolean);
-    console.log('Retailer emails:', emails);
 
-    // Fetch retailer details from retailers table
     const { data: retailerData, error } = await supabase
       .from('retailers')
       .select('*')
@@ -206,27 +202,22 @@ export default function WholesalerDashboard() {
       return;
     }
 
-    console.log('Matched retailers:', retailerData);
     setRetailers((retailerData || []) as Retailer[]);
   };
 
   const fetchTransactions = async () => {
     if (!currentUserId) return;
 
-    console.log('Fetching transactions for wholesaler:', currentUserId);
-
     const { data, error } = await supabase
       .from('retailer_orders')
       .select('*')
-      .eq('wholesaler_id', currentUserId)  // CRITICAL: Only this wholesaler's transactions
+      .eq('wholesaler_id', currentUserId)
       .order('created_at', { ascending: false });
     
     if (error) {
       console.error('Error fetching transactions:', error);
       setTransactions([]);
     } else if (data) {
-      console.log('Fetched transactions:', data);
-      console.log('Number of transactions:', data.length);
       setTransactions(data as RetailerOrder[]);
     } else {
       setTransactions([]);
@@ -234,12 +225,7 @@ export default function WholesalerDashboard() {
   };
 
   const handleAddProduct = async () => {
-    if (!currentUserId) {
-      alert('Please log in to add products');
-      return;
-    }
-
-    if (!productForm.name || !productForm.category || !productForm.price || !productForm.stock) {
+    if (!currentUserId || !productForm.name || !productForm.category || !productForm.price || !productForm.stock) {
       alert('Please fill in all required fields');
       return;
     }
@@ -269,17 +255,15 @@ export default function WholesalerDashboard() {
       });
       setShowAddProduct(false);
       await fetchProducts();
-      alert('Product added successfully! It is now available for retailers to order.');
+      alert('Product added successfully!');
     } else {
       console.error('Error adding product:', error);
-      alert('Failed to add product. Check console for details.');
+      alert('Failed to add product.');
     }
   };
 
   const handleUpdateProduct = async () => {
-    if (!editingProduct) return;
-
-    if (!productForm.name || !productForm.category || !productForm.price || !productForm.stock) {
+    if (!editingProduct || !productForm.name || !productForm.category || !productForm.price || !productForm.stock) {
       alert('Please fill in all required fields');
       return;
     }
@@ -310,12 +294,12 @@ export default function WholesalerDashboard() {
       alert('Product updated successfully!');
     } else {
       console.error('Error updating product:', error);
-      alert('Failed to update product. Check console for details.');
+      alert('Failed to update product.');
     }
   };
 
   const handleDeleteProduct = async (id: string) => {
-    if (confirm('Are you sure you want to delete this product? It will no longer be available to retailers.')) {
+    if (confirm('Are you sure you want to delete this product?')) {
       const { error } = await supabase
         .from('products')
         .update({ 
@@ -329,7 +313,7 @@ export default function WholesalerDashboard() {
         alert('Product deleted successfully!');
       } else {
         console.error('Error deleting product:', error);
-        alert('Failed to delete product. Check console for details.');
+        alert('Failed to delete product.');
       }
     }
   };
@@ -361,7 +345,7 @@ export default function WholesalerDashboard() {
       await fetchProducts();
     } else {
       console.error('Error updating stock:', error);
-      alert('Failed to update stock. Check console for details.');
+      alert('Failed to update stock.');
     }
   };
 
@@ -380,44 +364,126 @@ export default function WholesalerDashboard() {
 
   if (loading && !currentUserId) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-xl">Loading...</div>
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <p className="mt-4 text-muted-foreground font-semibold">Loading...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow">
+    <div className="min-h-screen bg-background">
+      <div className="bg-card border-b border-border shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-6">
-            <h1 className="text-3xl font-bold text-gray-900">Wholesaler Dashboard</h1>
-            <p className="mt-2 text-sm text-gray-600">Manage inventory, pricing, and retailer transactions</p>
+            <h1 className="text-3xl font-bold text-foreground">Wholesaler Dashboard</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Manage inventory, pricing, and retailer transactions</p>
           </div>
         </div>
       </div>
 
+      {/* Earnings Summary Cards */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        <div className="border-b border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          {/* Total Earnings */}
+          <div className="gradient-hero rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-white text-opacity-80">Total Earnings</p>
+                {earningsLoading ? (
+                  <p className="text-2xl font-bold mt-1">Loading...</p>
+                ) : (
+                  <p className="text-2xl font-bold mt-1">
+                    ₹{earnings?.totalEarnings.toLocaleString('en-IN') || '0'}
+                  </p>
+                )}
+              </div>
+              <div className="bg-white bg-opacity-20 rounded-full p-3">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Pending Earnings */}
+          <div className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-white text-opacity-80">Pending Earnings</p>
+                {earningsLoading ? (
+                  <p className="text-2xl font-bold mt-1">Loading...</p>
+                ) : (
+                  <p className="text-2xl font-bold mt-1">
+                    ₹{earnings?.pendingEarnings.toLocaleString('en-IN') || '0'}
+                  </p>
+                )}
+              </div>
+              <div className="bg-white bg-opacity-20 rounded-full p-3">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Total Orders */}
+          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-white text-opacity-80">Completed Orders</p>
+                {earningsLoading ? (
+                  <p className="text-2xl font-bold mt-1">Loading...</p>
+                ) : (
+                  <p className="text-2xl font-bold mt-1">{earnings?.totalOrders || 0}</p>
+                )}
+              </div>
+              <div className="bg-white bg-opacity-20 rounded-full p-3">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Total Products */}
+          <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-white text-opacity-80">Total Products</p>
+                <p className="text-2xl font-bold mt-1">{products.length}</p>
+              </div>
+              <div className="bg-white bg-opacity-20 rounded-full p-3">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-b border-border">
           <nav className="flex space-x-8">
             {(['inventory', 'retailers', 'transactions'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm capitalize ${
+                className={`py-4 px-1 border-b-2 font-medium text-sm capitalize transition-colors ${
                   activeTab === tab
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
                 }`}
               >
                 {tab}
                 {tab === 'retailers' && retailers.length > 0 && (
-                  <span className="ml-2 bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full text-xs">
+                  <span className="ml-2 bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs">
                     {retailers.length}
                   </span>
                 )}
                 {tab === 'transactions' && transactions.length > 0 && (
-                  <span className="ml-2 bg-green-100 text-green-600 px-2 py-0.5 rounded-full text-xs">
+                  <span className="ml-2 bg-accent/10 text-accent px-2 py-0.5 rounded-full text-xs">
                     {transactions.length}
                   </span>
                 )}
@@ -426,25 +492,25 @@ export default function WholesalerDashboard() {
           </nav>
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 pb-8">
           {activeTab === 'inventory' && (
             <div>
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Inventory Management</h2>
-                  <p className="text-sm text-gray-500 mt-1">Products you add here will be available for all retailers to order</p>
+                  <h2 className="text-2xl font-bold text-foreground">Inventory Management</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Products you add here will be available for all retailers to order</p>
                 </div>
                 <button
                   onClick={() => setShowAddProduct(!showAddProduct)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                  className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-[hsl(var(--primary-hover))] transition-all font-semibold"
                 >
                   Add New Product
                 </button>
               </div>
 
               {(showAddProduct || editingProduct) && (
-                <div className="bg-white p-6 rounded-lg shadow mb-6">
-                  <h3 className="text-lg font-semibold mb-4">
+                <div className="bg-card border border-border p-6 rounded-lg shadow-md mb-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-4">
                     {editingProduct ? 'Edit Product' : 'Add New Product'}
                   </h3>
                   <div>
@@ -454,13 +520,13 @@ export default function WholesalerDashboard() {
                         placeholder="Product Name *"
                         value={productForm.name}
                         onChange={(e) => setProductForm({...productForm, name: e.target.value})}
-                        className="border p-2 rounded"
+                        className="border border-input bg-background text-foreground p-2 rounded focus-primary transition-base"
                         required
                       />
                       <select
                         value={productForm.category}
                         onChange={(e) => setProductForm({...productForm, category: e.target.value})}
-                        className="border p-2 rounded"
+                        className="border border-input bg-background text-foreground p-2 rounded focus-primary transition-base"
                         required
                       >
                         <option value="">Select Category *</option>
@@ -476,7 +542,7 @@ export default function WholesalerDashboard() {
                         placeholder="Wholesale Price (₹) *"
                         value={productForm.price}
                         onChange={(e) => setProductForm({...productForm, price: e.target.value})}
-                        className="border p-2 rounded"
+                        className="border border-input bg-background text-foreground p-2 rounded focus-primary transition-base"
                         required
                       />
                       <input
@@ -484,7 +550,7 @@ export default function WholesalerDashboard() {
                         placeholder="Stock Quantity *"
                         value={productForm.stock}
                         onChange={(e) => setProductForm({...productForm, stock: e.target.value})}
-                        className="border p-2 rounded"
+                        className="border border-input bg-background text-foreground p-2 rounded focus-primary transition-base"
                         required
                       />
                       <input
@@ -492,26 +558,26 @@ export default function WholesalerDashboard() {
                         placeholder="Image URL (optional)"
                         value={productForm.image_url}
                         onChange={(e) => setProductForm({...productForm, image_url: e.target.value})}
-                        className="border p-2 rounded col-span-2"
+                        className="border border-input bg-background text-foreground p-2 rounded col-span-2 focus-primary transition-base"
                       />
                       <textarea
                         placeholder="Description"
                         value={productForm.description}
                         onChange={(e) => setProductForm({...productForm, description: e.target.value})}
-                        className="border p-2 rounded col-span-2"
+                        className="border border-input bg-background text-foreground p-2 rounded col-span-2 focus-primary transition-base"
                         rows={3}
                       />
                     </div>
                     <div className="flex gap-2 mt-4">
                       <button
                         onClick={editingProduct ? handleUpdateProduct : handleAddProduct}
-                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                        className="bg-primary text-white px-4 py-2 rounded hover:bg-[hsl(var(--primary-hover))] transition-all font-semibold"
                       >
                         {editingProduct ? 'Update Product' : 'Add Product'}
                       </button>
                       <button
                         onClick={cancelForm}
-                        className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+                        className="bg-muted text-foreground px-4 py-2 rounded hover:bg-muted/80 transition-all font-semibold"
                       >
                         Cancel
                       </button>
@@ -520,18 +586,18 @@ export default function WholesalerDashboard() {
                 </div>
               )}
 
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+              <div className="bg-card border border-border rounded-lg shadow-md overflow-hidden">
+                <table className="min-w-full divide-y divide-border">
+                  <thead className="bg-muted">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase">Product</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase">Category</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase">Price</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase">Stock</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-card divide-y divide-border">
                     {products.map((product) => (
                       <tr key={product.id}>
                         <td className="px-6 py-4">
@@ -540,26 +606,26 @@ export default function WholesalerDashboard() {
                               <img src={product.image_url} alt={product.name} className="h-10 w-10 rounded mr-3 object-cover" />
                             )}
                             <div>
-                              <div className="font-medium text-gray-900">{product.name}</div>
-                              <div className="text-sm text-gray-500">{product.description}</div>
+                              <div className="font-medium text-foreground">{product.name}</div>
+                              <div className="text-sm text-muted-foreground">{product.description}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{product.category}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">₹{product.price}</td>
+                        <td className="px-6 py-4 text-sm text-foreground">{product.category}</td>
+                        <td className="px-6 py-4 text-sm text-foreground">₹{product.price}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <input
                               type="number"
                               value={product.stock}
                               onChange={(e) => updateStock(product.id, parseInt(e.target.value) || 0)}
-                              className="w-20 border rounded px-2 py-1 text-sm"
+                              className="w-20 border border-input bg-background text-foreground rounded px-2 py-1 text-sm focus-primary transition-base"
                               min="0"
                             />
                             <span className={`px-2 py-1 text-xs rounded ${
-                              product.stock > 50 ? 'bg-green-100 text-green-800' :
-                              product.stock > 10 ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
+                              product.stock > 50 ? 'bg-accent/10 text-accent' :
+                              product.stock > 10 ? 'alert-warning' :
+                              'alert-warning'
                             }`}>
                               {product.stock > 50 ? 'In Stock' : product.stock > 10 ? 'Low' : 'Critical'}
                             </span>
@@ -568,13 +634,13 @@ export default function WholesalerDashboard() {
                         <td className="px-6 py-4 text-sm">
                           <button
                             onClick={() => startEditing(product)}
-                            className="text-blue-600 hover:text-blue-900 mr-3"
+                            className="text-primary hover:text-[hsl(var(--link-hover))] mr-3 transition-colors"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => handleDeleteProduct(product.id)}
-                            className="text-red-600 hover:text-red-900"
+                            className="text-secondary hover:text-[hsl(var(--secondary-hover))] transition-colors"
                           >
                             Delete
                           </button>
@@ -584,7 +650,7 @@ export default function WholesalerDashboard() {
                   </tbody>
                 </table>
                 {products.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-muted-foreground">
                     <p className="mb-2">No products yet.</p>
                     <p className="text-sm">Click "Add New Product" to create products that retailers can order.</p>
                   </div>
@@ -595,47 +661,50 @@ export default function WholesalerDashboard() {
 
           {activeTab === 'retailers' && (
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Retailer Management</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-6">Retailer Management</h2>
               {loading ? (
-                <div className="text-center py-8">Loading retailers...</div>
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <p className="mt-2 text-muted-foreground">Loading retailers...</p>
+                </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {retailers.map((retailer) => (
-                    <div key={retailer.id} className="bg-white p-6 rounded-lg shadow">
+                    <div key={retailer.id} className="bg-card border border-border p-6 rounded-lg shadow-md">
                       <div className="flex items-center mb-4">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 font-semibold text-xl">
+                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                          <span className="text-primary font-semibold text-xl">
                             {retailer.name?.charAt(0).toUpperCase()}
                           </span>
                         </div>
                         <div className="ml-4">
-                          <h3 className="font-semibold text-gray-900">{retailer.name}</h3>
-                          <p className="text-sm text-gray-500">{retailer.email}</p>
+                          <h3 className="font-semibold text-foreground">{retailer.name}</h3>
+                          <p className="text-sm text-muted-foreground">{retailer.email}</p>
                         </div>
                       </div>
                       {retailer.phone && (
-                        <div className="text-sm text-gray-600 mb-2">
+                        <div className="text-sm text-muted-foreground mb-2">
                           📞 {retailer.phone}
                         </div>
                       )}
                       {retailer.address && (
-                        <div className="text-sm text-gray-600 mb-4">
+                        <div className="text-sm text-muted-foreground mb-4">
                           📍 {retailer.address}
                         </div>
                       )}
-                      <div className="border-t pt-4">
+                      <div className="border-t border-border pt-4">
                         <div className="flex justify-between text-sm mb-2">
-                          <span className="text-gray-600">Total Orders:</span>
-                          <span className="font-semibold">{retailer.total_orders}</span>
+                          <span className="text-muted-foreground">Total Orders:</span>
+                          <span className="font-semibold text-foreground">{retailer.total_orders}</span>
                         </div>
                         <div className="flex justify-between text-sm mb-2">
-                          <span className="text-gray-600">Total Spent:</span>
-                          <span className="font-semibold">₹{Number(retailer.total_spent).toFixed(2)}</span>
+                          <span className="text-muted-foreground">Total Spent:</span>
+                          <span className="font-semibold text-foreground">₹{Number(retailer.total_spent).toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Status:</span>
+                          <span className="text-muted-foreground">Status:</span>
                           <span className={`px-2 py-1 text-xs rounded ${
-                            retailer.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                            retailer.status === 'active' ? 'bg-accent/10 text-accent' : 'bg-muted text-muted-foreground'
                           }`}>
                             {retailer.status}
                           </span>
@@ -644,7 +713,7 @@ export default function WholesalerDashboard() {
                     </div>
                   ))}
                   {retailers.length === 0 && (
-                    <div className="col-span-full text-center py-8 text-gray-500">
+                    <div className="col-span-full text-center py-8 text-muted-foreground">
                       No retailers have ordered from you yet.
                     </div>
                   )}
@@ -655,32 +724,35 @@ export default function WholesalerDashboard() {
 
           {activeTab === 'transactions' && (
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Transaction History</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-6">Transaction History</h2>
               {loading ? (
-                <div className="text-center py-8">Loading transactions...</div>
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <p className="mt-2 text-muted-foreground">Loading transactions...</p>
+                </div>
               ) : (
-                <div className="bg-white rounded-lg shadow overflow-hidden">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                <div className="bg-card border border-border rounded-lg shadow-md overflow-hidden">
+                  <table className="min-w-full divide-y divide-border">
+                    <thead className="bg-muted">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Retailer</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase">Order ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase">Retailer</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase">Items</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase">Total</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase">Date</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-card divide-y divide-border">
                       {transactions.map((transaction) => (
                         <tr key={transaction.id}>
-                          <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                          <td className="px-6 py-4 text-sm font-medium text-foreground">
                             #{transaction.id.slice(0, 8)}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
+                          <td className="px-6 py-4 text-sm text-foreground">
                             {transaction.retailer_name || 'Unknown'}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
+                          <td className="px-6 py-4 text-sm text-muted-foreground">
                             {Array.isArray(transaction.items) && transaction.items.length > 0 ? (
                               <div className="space-y-1">
                                 {transaction.items.map((item: any, idx: number) => (
@@ -693,19 +765,19 @@ export default function WholesalerDashboard() {
                               'N/A'
                             )}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-900 font-semibold">
+                          <td className="px-6 py-4 text-sm text-foreground font-semibold">
                             ₹{Number(transaction.total_amount).toFixed(2)}
                           </td>
                           <td className="px-6 py-4">
                             <span className={`px-2 py-1 text-xs rounded ${
-                              transaction.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-gray-100 text-gray-800'
+                              transaction.status === 'completed' ? 'bg-accent/10 text-accent' :
+                              transaction.status === 'pending' ? 'alert-warning' :
+                              'bg-muted text-muted-foreground'
                             }`}>
                               {transaction.status}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-500">
+                          <td className="px-6 py-4 text-sm text-muted-foreground">
                             {new Date(transaction.created_at).toLocaleDateString()}
                           </td>
                         </tr>
@@ -713,7 +785,7 @@ export default function WholesalerDashboard() {
                     </tbody>
                   </table>
                   {transactions.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
+                    <div className="text-center py-8 text-muted-foreground">
                       No transactions yet.
                     </div>
                   )}

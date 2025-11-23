@@ -50,11 +50,11 @@ function Signup() {
           const { error: partnerError } = await supabase
             .from("delivery_partners")
             .insert({
-              auth_id: authData.user.id,  // ✅ Fixed: use auth_id instead of id
+              auth_id: authData.user.id,
               name: name,
               phone: phone,
               vehicle_type: vehicleType,
-              is_available: true,  // ✅ Fixed: use is_available instead of is_online
+              is_available: true,
             });
 
           if (partnerError) {
@@ -77,22 +77,58 @@ function Signup() {
   };
 
   const roleOptions = [
-    { value: "customer", label: "Customer", icon: User, color: "blue", description: "Shop and order products" },
-    { value: "retailer", label: "Retailer", icon: Store, color: "purple", description: "Manage store inventory" },
-    { value: "wholesaler", label: "Wholesaler", icon: Package, color: "green", description: "Supply products in bulk" },
-    { value: "delivery_partner", label: "Delivery Partner", icon: Truck, color: "orange", description: "Deliver orders to customers" },
+    { 
+      value: "customer", 
+      label: "Customer", 
+      icon: User, 
+      gradient: "from-primary to-primary-light",
+      border: "border-primary",
+      bg: "bg-primary/10",
+      text: "text-primary",
+      description: "Shop and order products" 
+    },
+    { 
+      value: "retailer", 
+      label: "Retailer", 
+      icon: Store, 
+      gradient: "from-secondary to-secondary-light",
+      border: "border-secondary",
+      bg: "bg-secondary/10",
+      text: "text-secondary",
+      description: "Manage store inventory" 
+    },
+    { 
+      value: "wholesaler", 
+      label: "Wholesaler", 
+      icon: Package, 
+      gradient: "from-accent to-accent-light",
+      border: "border-accent",
+      bg: "bg-accent/10",
+      text: "text-accent",
+      description: "Supply products in bulk" 
+    },
+    { 
+      value: "delivery_partner", 
+      label: "Delivery Partner", 
+      icon: Truck, 
+      gradient: "from-neutral to-neutral-light",
+      border: "border-neutral",
+      bg: "bg-neutral/10",
+      text: "text-neutral",
+      description: "Deliver orders to customers" 
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full">
-        <h1 className="text-3xl font-bold text-center mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="bg-card rounded-2xl shadow-lg border border-border p-8 max-w-2xl w-full">
+        <h1 className="text-3xl font-bold text-center mb-2 text-foreground">
           Create Account
         </h1>
-        <p className="text-center text-gray-600 mb-6">Join Live MART today</p>
+        <p className="text-center text-muted-foreground mb-6">Join Live MART today</p>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+          <div className="alert-warning px-4 py-3 rounded-lg mb-4">
             {error}
           </div>
         )}
@@ -100,7 +136,7 @@ function Signup() {
         <form onSubmit={handleSignup} className="space-y-4">
           {/* Role Selection */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
+            <label className="block text-sm font-semibold text-foreground mb-3">
               Select Your Role
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -114,17 +150,17 @@ function Signup() {
                     onClick={() => setRole(option.value as any)}
                     className={`p-4 rounded-lg border-2 transition-all text-left ${
                       isSelected
-                        ? `border-${option.color}-500 bg-${option.color}-50`
-                        : "border-gray-200 hover:border-gray-300"
+                        ? `${option.border} ${option.bg}`
+                        : "border-border hover:border-muted"
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <Icon className={`w-5 h-5 ${isSelected ? `text-${option.color}-600` : "text-gray-500"}`} />
-                      <span className={`font-semibold ${isSelected ? `text-${option.color}-700` : "text-gray-700"}`}>
+                      <Icon className={`w-5 h-5 ${isSelected ? option.text : "text-muted-foreground"}`} />
+                      <span className={`font-semibold ${isSelected ? option.text : "text-foreground"}`}>
                         {option.label}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500">{option.description}</p>
+                    <p className="text-xs text-muted-foreground">{option.description}</p>
                   </button>
                 );
               })}
@@ -133,7 +169,7 @@ function Signup() {
 
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Full Name
             </label>
             <input
@@ -141,14 +177,14 @@ function Signup() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 bg-background border border-input rounded-lg focus-primary transition-base text-foreground"
               placeholder="Enter your full name"
             />
           </div>
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Email Address
             </label>
             <input
@@ -156,14 +192,14 @@ function Signup() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 bg-background border border-input rounded-lg focus-primary transition-base text-foreground"
               placeholder="your@email.com"
             />
           </div>
 
           {/* Phone */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Phone Number
             </label>
             <input
@@ -171,7 +207,7 @@ function Signup() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 bg-background border border-input rounded-lg focus-primary transition-base text-foreground"
               placeholder="+91 XXXXXXXXXX"
             />
           </div>
@@ -179,14 +215,14 @@ function Signup() {
           {/* Vehicle Type - Only for Delivery Partners */}
           {role === "delivery_partner" && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Vehicle Type
               </label>
               <select
                 value={vehicleType}
                 onChange={(e) => setVehicleType(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 bg-background border border-input rounded-lg focus-primary transition-base text-foreground"
               >
                 <option value="">Select vehicle type</option>
                 <option value="Bike">Bike/Motorcycle</option>
@@ -200,7 +236,7 @@ function Signup() {
 
           {/* Password */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Password
             </label>
             <input
@@ -209,7 +245,7 @@ function Signup() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 bg-background border border-input rounded-lg focus-primary transition-base text-foreground"
               placeholder="Minimum 6 characters"
             />
           </div>
@@ -218,17 +254,17 @@ function Signup() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+            className="w-full gradient-primary text-white font-semibold py-3 rounded-lg hover:shadow-button-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
           >
             {loading ? "Creating Account..." : "Sign Up"}
           </button>
         </form>
 
-        <p className="text-center text-gray-600 mt-6">
+        <p className="text-center text-muted-foreground mt-6">
           Already have an account?{" "}
           <button
             onClick={() => navigate("/login")}
-            className="text-blue-600 font-semibold hover:underline"
+            className="text-primary font-semibold hover:text-[hsl(var(--link-hover))] transition-colors"
           >
             Login
           </button>

@@ -1,3 +1,4 @@
+// src/App.tsx - Updated with new color scheme and dark mode
 import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "./utils/supabaseClient";
@@ -17,284 +18,376 @@ import DeliveryPartnerDashboard from './pages/DeliveryPartnerDashboard';
 import OrderManagement from "./components/order-management";
 import AuthCallback from "./components/AuthCallback";
 import MockPaymentGateway from "./MockPaymentGateway";
-
-type Product = {
-  id: string;
-  name: string;
-  price?: number;
-  category?: string;
-};
+import Queries from "./pages/Queries";
+import QueryDetails from "./pages/QueryDetails";
+import QueryManagement from "./components/QueryManagement";
+import ProductDetailPage from "./pages/ProductDetailPage";
+import ProfilePage from "./pages/ProfilePage";
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import './index.css';
+import FAQ from './pages/FAQ';
 
 type UserRole = "customer" | "retailer" | "wholesaler" | "delivery_partner" | null;
 
-// Protected Route Component
-function ProtectedRoute({ 
-  children, 
-  allowedRoles, 
-  userRole 
-}: { 
-  children: React.ReactNode; 
-  allowedRoles: UserRole[]; 
-  userRole: UserRole;
-}) {
+function ProtectedRoute({ children, allowedRoles, userRole }: { children: React.ReactNode; allowedRoles: UserRole[]; userRole: UserRole; }) {
   if (!userRole) {
     return <Navigate to="/login" replace />;
   }
-  
   if (!allowedRoles.includes(userRole)) {
-    // Redirect to appropriate dashboard based on role
-    if (userRole === "customer") {
-      return <Navigate to="/customer" replace />;
-    } else if (userRole === "retailer") {
-      return <Navigate to="/retailer" replace />;
-    } else if (userRole === "delivery_partner") {
-      return <Navigate to="/delivery-dashboard" replace />;
-    } else if (userRole === "wholesaler") {
-      return <Navigate to="/wholesaler" replace />;
-    }
+    if (userRole === "customer") return <Navigate to="/customer" replace />;
+    else if (userRole === "retailer") return <Navigate to="/retailer" replace />;
+    else if (userRole === "delivery_partner") return <Navigate to="/delivery-dashboard" replace />;
+    else if (userRole === "wholesaler") return <Navigate to="/wholesaler" replace />;
   }
-  
   return <>{children}</>;
 }
 
-// Enhanced Navbar
-// Replace the Navbar function in your App.tsx with this:
+// Replace the Navbar function in your App.tsx with this updated version
 
-function Navbar({ 
-  isLoggedIn, 
-  onLogout, 
-  userRole 
-}: { 
-  isLoggedIn: boolean; 
-  onLogout: () => void;
-  userRole: UserRole;
-}) {
+// Replace the Navbar function in your App.tsx with this updated version
+
+function Navbar({ isLoggedIn, onLogout, userRole }: { isLoggedIn: boolean; onLogout: () => void; userRole: UserRole; }) {
   const { getCartCount } = useCart();
   const navigate = useNavigate();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   const handleLogoutClick = () => {
     onLogout();
     navigate("/");
+    setIsMenuOpen(false);
   };
 
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    setIsMenuOpen(false);
+  };
+
+  // If not logged in, show the original navbar
+  if (!isLoggedIn) {
+    return (
+      <nav className="gradient-hero shadow-lg p-4 mb-0">
+        <div className="container mx-auto flex justify-between items-center">
+          {/* Logo with Image */}
+          <button 
+            onClick={() => navigate("/")} 
+            className="flex items-center gap-3 hover:scale-105 transition-transform cursor-pointer"
+          >
+            <img 
+              src="/logo.png" 
+              alt="Live MART Logo" 
+              className="h-16 w-16 object-contain rounded-lg"
+              onError={(e) => {
+                // Fallback to emoji if image fails to load
+                e.currentTarget.style.display = 'none';
+                const fallbackEmoji = e.currentTarget.nextElementSibling;
+                if (fallbackEmoji && fallbackEmoji instanceof HTMLElement) {
+                  fallbackEmoji.style.display = 'inline';
+                }
+              }}
+            />
+            <span className="text-3xl" style={{ display: 'none' }}>🛒</span>
+            <span className="text-2xl font-bold text-white">Live MART</span>
+          </button>
+
+          <div className="flex gap-4 items-center">
+            {/* Theme Toggle */}
+            <button 
+              onClick={toggleTheme}
+              className="p-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all"
+              aria-label="Toggle theme"
+            >
+              {theme === 'light' ? '🌙' : '☀️'}
+            </button>
+            
+            <button 
+              onClick={() => navigate('/faq')} 
+              className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold flex items-center gap-2"
+            >
+              ❓ FAQ
+            </button>
+            <button 
+              onClick={() => navigate('/login')} 
+              className="px-6 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold border border-white border-opacity-50"
+            >
+              Sign In
+            </button>
+            <button 
+              onClick={() => navigate('/signup')} 
+              className="px-6 py-2 rounded-lg bg-accent text-white hover:bg-[hsl(var(--accent-hover))] transition-all font-semibold shadow-md"
+            >
+              Sign Up
+            </button>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
+  // Logged in navbar with hamburger menu
   return (
-    <nav className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg p-4 mb-0">
+    <nav className="gradient-hero shadow-lg p-4 mb-0 relative">
       <div className="container mx-auto flex justify-between items-center">
+        {/* Logo with Image */}
         <button 
-          onClick={() => navigate("/")}
-          className="text-2xl font-bold text-white hover:scale-105 transition-transform cursor-pointer flex items-center gap-2"
+          onClick={() => handleNavigation("/")} 
+          className="flex items-center gap-3 hover:scale-105 transition-transform cursor-pointer"
         >
-          🛒 Live MART
+          <img 
+            src="/logo.png" 
+            alt="Live MART Logo" 
+            className="h-16 w-16 object-contain rounded-lg"
+            onError={(e) => {
+              // Fallback to emoji if image fails to load
+              e.currentTarget.style.display = 'none';
+              const fallbackEmoji = e.currentTarget.nextElementSibling;
+              if (fallbackEmoji && fallbackEmoji instanceof HTMLElement) {
+                fallbackEmoji.style.display = 'inline';
+              }
+            }}
+          />
+          <span className="text-3xl" style={{ display: 'none' }}>🛒</span>
+          <span className="text-2xl font-bold text-white">Live MART</span>
         </button>
-
-        <div className="flex gap-4 items-center">
-          {/* ========== LOGGED OUT STATE ========== */}
-          {!isLoggedIn && (
-            <>
-              <button
-                onClick={() => navigate('/login')}
-                className="px-6 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold border border-white border-opacity-50"
-              >
-                Sign In
-              </button>
-              <button
-                onClick={() => navigate('/signup')}
-                className="px-6 py-2 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-500 transition-all font-semibold shadow-md"
-              >
-                Sign Up
-              </button>
-            </>
+        
+        {/* Cart Icon for Customers - Always visible on right */}
+        <div className="flex items-center gap-4">
+          {/* Theme Toggle */}
+          <button 
+            onClick={toggleTheme}
+            className="p-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all"
+            aria-label="Toggle theme"
+          >
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
+          
+          {userRole === "customer" && (
+            <button 
+              onClick={() => handleNavigation('/cart')} 
+              className="relative px-4 py-2 rounded-lg bg-accent text-white hover:bg-[hsl(var(--accent-hover))] transition-all font-semibold shadow-md"
+            >
+              🛒 Cart
+              {getCartCount() > 0 && (
+                <span className="absolute -top-2 -right-2 bg-secondary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
+                  {getCartCount()}
+                </span>
+              )}
+            </button>
           )}
-
-          {/* ========== LOGGED IN STATE ========== */}
-          {isLoggedIn && (
-            <>
-              {/* CUSTOMER BUTTONS */}
-              {userRole === "customer" && (
-                <>
-                  <button
-                    onClick={() => navigate('/customer')}
-                    className="px-4 py-2 rounded-lg bg-white text-blue-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
-                  >
-                    Shop Products
-                  </button>
-                  <button
-                    onClick={() => navigate('/orders')}
-                    className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold"
-                  >
-                    My Orders
-                  </button>
-                  <button
-                    onClick={() => navigate('/cart')}
-                    className="relative px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-300 transition-all font-semibold"
-                  >
-                    🛒 Cart
-                    {getCartCount() > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
-                        {getCartCount()}
-                      </span>
-                    )}
-                  </button>
-                </>
+          
+          {/* Hamburger Menu Button */}
+          <button 
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="text-white p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-all"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {isMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               )}
-
-              {/* RETAILER BUTTONS */}
-              {userRole === "retailer" && (
-                <button
-                  onClick={() => navigate('/retailer')}
-                  className="px-4 py-2 rounded-lg bg-white text-purple-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
-                >
-                  Retailer Dashboard
-                </button>
-              )}
-
-              {/* DELIVERY PARTNER BUTTONS */}
-              {userRole === "delivery_partner" && (
-                <button
-                  onClick={() => navigate('/delivery-dashboard')}
-                  className="px-4 py-2 rounded-lg bg-white text-green-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
-                >
-                  Delivery Dashboard
-                </button>
-              )}
-
-              {/* WHOLESALER BUTTONS */}
-              {userRole === "wholesaler" && (
-                <button
-                  onClick={() => navigate('/wholesaler')}
-                  className="px-4 py-2 rounded-lg bg-white text-green-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
-                >
-                  Wholesaler Dashboard
-                </button>
-              )}
-
-              {/* LOGOUT BUTTON - Shows for ALL logged in users */}
-              <button
-                onClick={handleLogoutClick}
-                className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all font-semibold shadow-md"
-              >
-                Logout
-              </button>
-            </>
-          )}
+            </svg>
+          </button>
         </div>
       </div>
-    </nav>
-  );
 
+      {/* Sliding Menu Overlay */}
+      <div 
+        className={`fixed inset-0 bg-black transition-opacity duration-300 z-40 ${isMenuOpen ? 'opacity-50' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => setIsMenuOpen(false)}
+      />
 
-  return (
-    <nav className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg p-4 mb-0">
-      <div className="container mx-auto flex justify-between items-center">
-        <button 
-          onClick={() => navigate("/")}
-          className="text-2xl font-bold text-white hover:scale-105 transition-transform cursor-pointer flex items-center gap-2"
-        >
-          🛒 Live MART
-        </button>
+      {/* Sliding Menu Panel */}
+      <div className={`fixed top-0 right-0 h-full w-80 bg-card shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-2xl font-bold text-foreground">Menu</h2>
+            <button 
+              onClick={() => setIsMenuOpen(false)}
+              className="text-muted-foreground hover:text-foreground p-2 hover:bg-muted rounded-lg transition-all"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
 
-        {/* Only show these when logged in */}
-        {isLoggedIn && (
-          <div className="flex gap-4 items-center">
-            {/* Show role-specific buttons */}
+          <div className="space-y-2">
             {userRole === "customer" && (
               <>
-                <button
-                  onClick={() => navigate('/customer')}
-                  className="px-4 py-2 rounded-lg bg-white text-blue-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
+                <button 
+                  onClick={() => handleNavigation('/customer')} 
+                  className="w-full text-left px-4 py-3 hover:bg-primary/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
                 >
-                  Shop Products
+                  🛍️ Shop Products
                 </button>
-                <button
-                  onClick={() => navigate('/orders')}
-                  className="px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-all font-semibold"
+                <button 
+                  onClick={() => handleNavigation('/orders')} 
+                  className="w-full text-left px-4 py-3 hover:bg-primary/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
                 >
-                  My Orders
+                  📦 My Orders
                 </button>
-                <button
-                  onClick={() => navigate('/cart')}
-                  className="relative px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 hover:bg-yellow-300 transition-all font-semibold"
+                <button 
+                  onClick={() => handleNavigation('/queries')} 
+                  className="w-full text-left px-4 py-3 hover:bg-primary/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
                 >
-                  🛒 Cart
-                  {getCartCount() > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
-                      {getCartCount()}
-                    </span>
-                  )}
+                  💬 Queries
+                </button>
+                <button 
+                  onClick={() => handleNavigation('/faq')} 
+                  className="w-full text-left px-4 py-3 hover:bg-primary/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
+                >
+                  ❓ FAQ
+                </button>
+                <div className="border-t border-border my-4"></div>
+                <button 
+                  onClick={() => handleNavigation('/profile')} 
+                  className="w-full text-left px-4 py-3 hover:bg-primary/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
+                >
+                  👤 Profile
+                </button>
+                <button 
+                  onClick={handleLogoutClick} 
+                  className="w-full text-left px-4 py-3 hover:bg-secondary/10 rounded-lg transition-all flex items-center gap-3 text-secondary font-semibold"
+                >
+                  🚪 Logout
                 </button>
               </>
             )}
 
             {userRole === "retailer" && (
-              <button
-                onClick={() => navigate('/retailer')}
-                className="px-4 py-2 rounded-lg bg-white text-purple-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
-              >
-                Retailer Dashboard
-              </button>
-            )}
-
-            {userRole === "delivery_partner" && (
-              <button
-                onClick={() => navigate('/delivery-dashboard')}
-                className="px-4 py-2 rounded-lg bg-white text-green-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
-              >
-                Delivery Dashboard
-              </button>
+              <>
+                <button 
+                  onClick={() => handleNavigation('/retailer')} 
+                  className="w-full text-left px-4 py-3 hover:bg-primary/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
+                >
+                  📊 Retailer Dashboard
+                </button>
+                <button 
+                  onClick={() => handleNavigation('/order-management')} 
+                  className="w-full text-left px-4 py-3 hover:bg-primary/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
+                >
+                  📋 Order Management
+                </button>
+                <button 
+                  onClick={() => handleNavigation('/retailer/queries')} 
+                  className="w-full text-left px-4 py-3 hover:bg-primary/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
+                >
+                  💬 Query Management
+                </button>
+                <button 
+                  onClick={() => handleNavigation('/faq')} 
+                  className="w-full text-left px-4 py-3 hover:bg-primary/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
+                >
+                  ❓ FAQ
+                </button>
+                <div className="border-t border-border my-4"></div>
+                <button 
+                  onClick={() => handleNavigation('/profile')} 
+                  className="w-full text-left px-4 py-3 hover:bg-primary/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
+                >
+                  👤 Profile
+                </button>
+                <button 
+                  onClick={handleLogoutClick} 
+                  className="w-full text-left px-4 py-3 hover:bg-secondary/10 rounded-lg transition-all flex items-center gap-3 text-secondary font-semibold"
+                >
+                  🚪 Logout
+                </button>
+              </>
             )}
 
             {userRole === "wholesaler" && (
-              <button
-                onClick={() => navigate('/wholesaler')}
-                className="px-4 py-2 rounded-lg bg-white text-green-600 shadow-md font-semibold hover:bg-opacity-90 transition-all"
-              >
-                Wholesaler Dashboard
-              </button>
+              <>
+                <button 
+                  onClick={() => handleNavigation('/wholesaler')} 
+                  className="w-full text-left px-4 py-3 hover:bg-accent/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
+                >
+                  🏭 Wholesaler Dashboard
+                </button>
+                <button 
+                  onClick={() => handleNavigation('/order-management')} 
+                  className="w-full text-left px-4 py-3 hover:bg-accent/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
+                >
+                  📋 Order Management
+                </button>
+                <button 
+                  onClick={() => handleNavigation('/faq')} 
+                  className="w-full text-left px-4 py-3 hover:bg-accent/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
+                >
+                  ❓ FAQ
+                </button>
+                <div className="border-t border-border my-4"></div>
+                <button 
+                  onClick={() => handleNavigation('/profile')} 
+                  className="w-full text-left px-4 py-3 hover:bg-accent/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
+                >
+                  👤 Profile
+                </button>
+                <button 
+                  onClick={handleLogoutClick} 
+                  className="w-full text-left px-4 py-3 hover:bg-secondary/10 rounded-lg transition-all flex items-center gap-3 text-secondary font-semibold"
+                >
+                  🚪 Logout
+                </button>
+              </>
             )}
 
-            <button
-              onClick={handleLogoutClick}
-              className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all font-semibold"
-            >
-              Logout
-            </button>
+            {userRole === "delivery_partner" && (
+              <>
+                <button 
+                  onClick={() => handleNavigation('/delivery-dashboard')} 
+                  className="w-full text-left px-4 py-3 hover:bg-accent/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
+                >
+                  🚚 Delivery Dashboard
+                </button>
+                <button 
+                  onClick={() => handleNavigation('/faq')} 
+                  className="w-full text-left px-4 py-3 hover:bg-accent/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
+                >
+                  ❓ FAQ
+                </button>
+                <div className="border-t border-border my-4"></div>
+                <button 
+                  onClick={() => handleNavigation('/profile')} 
+                  className="w-full text-left px-4 py-3 hover:bg-accent/10 rounded-lg transition-all flex items-center gap-3 text-card-foreground font-semibold"
+                >
+                  👤 Profile
+                </button>
+                <button 
+                  onClick={handleLogoutClick} 
+                  className="w-full text-left px-4 py-3 hover:bg-secondary/10 rounded-lg transition-all flex items-center gap-3 text-secondary font-semibold"
+                >
+                  🚪 Logout
+                </button>
+              </>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </nav>
   );
 }
-// Add this to your App component in App.tsx
 
-function App() {
+function AppContent() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>(null);
-  const [isLoading, setIsLoading] = useState(true); // ADD THIS LINE
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Get the logged-in user from Supabase Auth
   useEffect(() => {
+    let mounted = true;
+
     async function getUser() {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!mounted) return;
         if (user) {
           setUserId(user.id);
           setIsLoggedIn(true);
-          
-          // Fetch user role from users table
-          const { data: userData } = await supabase
-            .from("users")
-            .select("role")
-            .eq("auth_id", user.id)
-            .single();
-          
-          if (userData) {
-            setUserRole(userData.role as UserRole);
-          }
+          const { data: userData, error } = await supabase.from("users").select("role").eq("auth_id", user.id).single();
+          if (!mounted) return;
+          if (!error && userData) setUserRole(userData.role as UserRole);
         } else {
           setUserId(null);
           setIsLoggedIn(false);
@@ -302,55 +395,45 @@ function App() {
         }
       } catch (error) {
         console.error("Error fetching user:", error);
+        if (mounted) { setUserId(null); setIsLoggedIn(false); setUserRole(null); }
       } finally {
-        setIsLoading(false); // ADD THIS LINE
+        if (mounted) setIsLoading(false);
       }
     }
 
+    const timeoutId = setTimeout(() => {
+      if (mounted && isLoading) { console.warn("Auth loading timeout - forcing completion"); setIsLoading(false); }
+    }, 3000);
+
     getUser();
 
-    // Listen for login/logout events
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
       if (session?.user) {
         setUserId(session.user.id);
         setIsLoggedIn(true);
-        
-        // Fetch user role
-        const { data: userData } = await supabase
-          .from("users")
-          .select("role")
-          .eq("auth_id", session.user.id)
-          .single();
-        
-        if (userData) {
-          setUserRole(userData.role as UserRole);
-        }
+        const { data: userData, error } = await supabase.from("users").select("role").eq("auth_id", session.user.id).single();
+        if (!mounted) return;
+        if (!error && userData) setUserRole(userData.role as UserRole);
       } else {
         setUserId(null);
         setIsLoggedIn(false);
         setUserRole(null);
       }
-      setIsLoading(false); // ADD THIS LINE
+      setIsLoading(false);
     });
 
-    return () => {
-      listener.subscription.unsubscribe();
-    };
+    return () => { mounted = false; clearTimeout(timeoutId); listener.subscription.unsubscribe(); };
   }, []);
 
   const handleLogin = async (id: string) => {
     setUserId(id);
     setIsLoggedIn(true);
-    
-    // Fetch user role after login
-    const { data: userData } = await supabase
-      .from("users")
-      .select("role")
-      .eq("auth_id", id)
-      .single();
-    
-    if (userData) {
-      setUserRole(userData.role as UserRole);
+    try {
+      const { data: userData } = await supabase.from("users").select("role").eq("auth_id", id).single();
+      if (userData) setUserRole(userData.role as UserRole);
+    } catch (error) {
+      console.error("Error fetching user role:", error);
     }
   };
 
@@ -361,13 +444,12 @@ function App() {
     setUserRole(null);
   };
 
-  // ADD THIS - Show loading spinner while checking auth
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600 font-semibold">Loading...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <p className="mt-4 text-muted-foreground font-semibold">Loading...</p>
         </div>
       </div>
     );
@@ -375,119 +457,48 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-background">
         <Navbar isLoggedIn={isLoggedIn} onLogout={handleLogout} userRole={userRole} />
-        
         <Routes>
-          {/* 🏠 Home Page */}
           <Route path="/" element={<HomePage isLoggedIn={isLoggedIn} />} />
-          
-          {/* ✍️ Signup Page */}
           <Route path="/signup" element={<Signup />} />
-          
-          {/* 🔐 Login Page */}
           <Route path="/login" element={<Login onLogin={handleLogin} userRole={userRole} />} />
-          
-          {/* 🔄 Auth Callback */}
           <Route path="/auth/callback" element={<AuthCallback />} />
           
-          {/* 🛒 Customer Dashboard - Only for customers */}
-          <Route 
-            path="/customer" 
-            element={
-              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
-                <CustomerDashboard />
-              </ProtectedRoute>
-            } 
-          />
+          {/* Product Detail Page - accessible to everyone */}
+          <Route path="/product/:productId" element={<ProductDetailPage />} />
           
-          {/* 📦 Order Tracking - Only for customers */}
-          <Route 
-            path="/track-order/:orderId" 
-            element={
-              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
-                <OrderTracking />
-              </ProtectedRoute>
-            } 
-          />
+          {/* FAQ Page - accessible to everyone */}
+          <Route path="/faq" element={<FAQ />} />
           
-          {/* 🚚 Delivery Partner Dashboard - Only for delivery partners */}
-          <Route 
-            path="/delivery-dashboard" 
-            element={
-              <ProtectedRoute allowedRoles={["delivery_partner"]} userRole={userRole}>
-                <DeliveryPartnerDashboard />
-              </ProtectedRoute>
-            } 
-          />
+          {/* Profile Page - accessible to all logged-in users */}
+          <Route path="/profile" element={<ProtectedRoute allowedRoles={["customer", "retailer", "wholesaler", "delivery_partner"]} userRole={userRole}><ProfilePage /></ProtectedRoute>} />
           
-          {/* 📦 Order Management - For retailers/wholesalers */}
-          <Route 
-            path="/order-management" 
-            element={
-              <ProtectedRoute allowedRoles={["retailer", "wholesaler"]} userRole={userRole}>
-                <OrderManagement />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* 🏪 Retailer Dashboard - ONLY for retailers */}
-          <Route 
-            path="/retailer" 
-            element={
-              <ProtectedRoute allowedRoles={["retailer"]} userRole={userRole}>
-                <RetailerDashboard />
-              </ProtectedRoute>
-            } 
-          />
-
-          {/* 🏭 Wholesaler Dashboard - ONLY for wholesalers */}
-          <Route 
-            path="/wholesaler" 
-            element={
-              <ProtectedRoute allowedRoles={["wholesaler"]} userRole={userRole}>
-                <WholesalerDashboard />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* 🛒 Cart & Orders - Only for customers */}
-          <Route 
-            path="/cart" 
-            element={
-              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
-                <Cart />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/checkout" 
-            element={
-              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
-                <Checkout />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/order-success/:orderId" 
-            element={
-              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
-                <OrderSuccess />
-              </ProtectedRoute>
-            } 
-          />
+          <Route path="/customer" element={<ProtectedRoute allowedRoles={["customer"]} userRole={userRole}><CustomerDashboard /></ProtectedRoute>} />
+          <Route path="/track-order/:orderId" element={<ProtectedRoute allowedRoles={["customer"]} userRole={userRole}><OrderTracking /></ProtectedRoute>} />
+          <Route path="/queries" element={<ProtectedRoute allowedRoles={["customer"]} userRole={userRole}><Queries /></ProtectedRoute>} />
+          <Route path="/query/:queryId" element={<ProtectedRoute allowedRoles={["customer"]} userRole={userRole}><QueryDetails /></ProtectedRoute>} />
+          <Route path="/retailer/queries" element={<ProtectedRoute allowedRoles={["retailer"]} userRole={userRole}><QueryManagement /></ProtectedRoute>} />
+          <Route path="/delivery-dashboard" element={<ProtectedRoute allowedRoles={["delivery_partner"]} userRole={userRole}><DeliveryPartnerDashboard /></ProtectedRoute>} />
+          <Route path="/order-management" element={<ProtectedRoute allowedRoles={["retailer", "wholesaler"]} userRole={userRole}><OrderManagement /></ProtectedRoute>} />
+          <Route path="/retailer" element={<ProtectedRoute allowedRoles={["retailer"]} userRole={userRole}><RetailerDashboard /></ProtectedRoute>} />
+          <Route path="/wholesaler" element={<ProtectedRoute allowedRoles={["wholesaler"]} userRole={userRole}><WholesalerDashboard /></ProtectedRoute>} />
+          <Route path="/cart" element={<ProtectedRoute allowedRoles={["customer"]} userRole={userRole}><Cart /></ProtectedRoute>} />
+          <Route path="/checkout" element={<ProtectedRoute allowedRoles={["customer"]} userRole={userRole}><Checkout /></ProtectedRoute>} />
+          <Route path="/order-success/:orderId" element={<ProtectedRoute allowedRoles={["customer"]} userRole={userRole}><OrderSuccess /></ProtectedRoute>} />
           <Route path="/mock-payment" element={<MockPaymentGateway />} />
-          <Route 
-            path="/orders" 
-            element={
-              <ProtectedRoute allowedRoles={["customer"]} userRole={userRole}>
-                <Orders />
-              </ProtectedRoute>
-            } 
-          />
+          <Route path="/orders" element={<ProtectedRoute allowedRoles={["customer"]} userRole={userRole}><Orders /></ProtectedRoute>} />
         </Routes>
       </div>
     </Router>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
 

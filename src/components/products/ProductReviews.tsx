@@ -26,12 +26,7 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('ProductReviews mounted for product:', productId);
-    console.log('User has delivered order:', userHasDeliveredOrder);
-    if (!productId) {
-      console.warn('ProductReviews mounted without productId');
-      return;
-    }
+    if (!productId) return;
     loadReviews();
     getCurrentUser();
   }, [productId]);
@@ -46,17 +41,13 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
   const loadReviews = async () => {
     try {
       setLoading(true);
-      console.log('Loading reviews for product:', productId);
       const data = await fetchProductReviews(productId);
-      console.log('Reviews loaded:', data);
       setReviews(data);
       
-      // Check if current user has already reviewed
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const existingReview = data.find((r: ProductReview) => r.user_id === user.id);
         if (existingReview) {
-          console.log('Found existing review from user:', existingReview);
           setUserExistingReview(existingReview);
           setNewReview({ rating: existingReview.rating, reviewText: existingReview.review_text || '' });
         }
@@ -69,13 +60,11 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
   };
 
   const handleStartReview = () => {
-    // Only allow if user has delivered order OR if they already have a review (for editing)
     if (!userHasDeliveredOrder && !userExistingReview) {
       alert('You need to purchase and receive this product before you can leave a review.');
       return;
     }
 
-    console.log('Starting review form');
     if (userExistingReview) {
       setIsEditMode(true);
       setNewReview({ rating: userExistingReview.rating, reviewText: userExistingReview.review_text || '' });
@@ -92,7 +81,6 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
       return;
     }
 
-    // Enforce delivered order requirement for new reviews
     if (!isEditMode && !userHasDeliveredOrder) {
       alert('You can only review products from your delivered orders.');
       return;
@@ -106,7 +94,6 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
         return;
       }
 
-      // Get order ID for this product - verify delivered status
       const { data: orders, error: orderError } = await supabase
         .from('orders')
         .select(`id, delivery_status, order_items (product_id)`)
@@ -119,13 +106,11 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
         order.order_items?.some((item: any) => item.product_id === productId)
       );
 
-      // For new reviews, strictly enforce delivered order requirement
       if (!isEditMode && (!ordersWithProduct || ordersWithProduct.length === 0)) {
         alert('You can only review products from your delivered orders.');
         return;
       }
 
-      // For updates, allow if they already have a review (even if somehow order status changed)
       if (isEditMode && !userExistingReview) {
         alert('Review not found.');
         return;
@@ -133,7 +118,6 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
 
       const orderId = ordersWithProduct && ordersWithProduct.length > 0 ? ordersWithProduct[0].id : null;
 
-      // Get user name
       const { data: userData } = await supabase
         .from('profiles')
         .select('full_name')
@@ -143,7 +127,6 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
       const userName = userData?.full_name || user.email?.split('@')[0] || 'Anonymous';
 
       if (isEditMode && userExistingReview) {
-        // Update existing review
         const { error: updateError } = await supabase
           .from('reviews')
           .update({
@@ -156,7 +139,6 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
         if (updateError) throw updateError;
         alert('✅ Review updated successfully!');
       } else {
-        // Insert new review - double-check we have an order
         if (!orderId) {
           alert('Unable to verify your order. Please try again.');
           return;
@@ -210,7 +192,7 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
-            className={`${starSize} ${star <= rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+            className={`${starSize} ${star <= rating ? 'text-[#D4A855] fill-[#D4A855]' : 'text-[#D8DEE6] dark:text-[#3A4555]'}`}
           />
         ))}
       </div>
@@ -226,7 +208,7 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
             type="button"
             onClick={() => setNewReview({ ...newReview, rating: star })}
             className={`text-4xl transition-all transform hover:scale-110 ${
-              star <= newReview.rating ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-300'
+              star <= newReview.rating ? 'text-[#D4A855]' : 'text-[#D8DEE6] dark:text-[#3A4555] hover:text-[#D4A855]/70'
             }`}
           >
             ★
@@ -243,32 +225,31 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
     });
   };
 
-  // Determine if user can write/edit review
   const canWriteReview = userHasDeliveredOrder || userExistingReview !== null;
 
   // Review Form View
   if (showAddReview) {
     return (
       <div className="space-y-6">
-        <div className="border-b pb-4">
+        <div className="border-b border-[#D8DEE6] dark:border-[#3A4555] pb-4">
           <button
             type="button"
             onClick={() => setShowAddReview(false)}
-            className="text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-3"
+            className="text-[#6B7A8F] dark:text-[#8A99AA] hover:text-[#4A5568] dark:hover:text-[#D1D8E0] flex items-center gap-1 mb-3 transition-colors"
           >
             <span>←</span> Back to Reviews
           </button>
-          <h3 className="text-2xl font-bold text-gray-800">
+          <h3 className="text-2xl font-bold text-[#2C3847] dark:text-[#E5E9EF]">
             {isEditMode ? 'Edit Your Review' : 'Write Your Review'}
           </h3>
-          <p className="text-gray-600 mt-1">{productName}</p>
+          <p className="text-[#4A5568] dark:text-[#D1D8E0] mt-1">{productName}</p>
         </div>
 
         <div className="space-y-6">
           <div>
-            <label className="block font-semibold text-gray-700 mb-3 text-lg">Your Rating *</label>
+            <label className="block font-semibold text-[#2C3847] dark:text-[#E5E9EF] mb-3 text-lg">Your Rating *</label>
             {renderClickableStars()}
-            <p className="text-lg font-medium text-gray-700 mt-2">
+            <p className="text-lg font-medium text-[#4A5568] dark:text-[#D1D8E0] mt-2">
               {newReview.rating === 5 && 'Excellent! ⭐⭐⭐⭐⭐'}
               {newReview.rating === 4 && 'Very Good ⭐⭐⭐⭐'}
               {newReview.rating === 3 && 'Average ⭐⭐⭐'}
@@ -278,14 +259,14 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
           </div>
 
           <div>
-            <label className="block font-semibold text-gray-700 mb-3 text-lg">
-              Your Review <span className="text-gray-500 font-normal">(Optional)</span>
+            <label className="block font-semibold text-[#2C3847] dark:text-[#E5E9EF] mb-3 text-lg">
+              Your Review <span className="text-[#6B7A8F] dark:text-[#8A99AA] font-normal">(Optional)</span>
             </label>
             <textarea
               value={newReview.reviewText}
               onChange={(e) => setNewReview({ ...newReview, reviewText: e.target.value })}
               rows={5}
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none resize-none"
+              className="w-full border border-[#D8DEE6] dark:border-[#3A4555] bg-[#FAFBFC] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF] rounded-xl px-4 py-3 focus:border-[#4A9FBE] dark:focus:border-[#6BB3CF] focus:ring-2 focus:ring-[rgba(74,159,190,0.3)] focus:outline-none resize-none"
               placeholder="Share your experience with this product..."
             />
           </div>
@@ -295,7 +276,7 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
               type="button"
               onClick={() => setShowAddReview(false)}
               disabled={submitting}
-              className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-xl hover:bg-gray-300 font-semibold disabled:opacity-50"
+              className="flex-1 bg-[#EDF2F7] dark:bg-[#1A2332] text-[#2C3847] dark:text-[#E5E9EF] py-3 rounded-xl hover:bg-[#D8DEE6] dark:hover:bg-[#242D3C] font-semibold disabled:opacity-50 transition-colors"
             >
               Cancel
             </button>
@@ -303,7 +284,7 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
               type="button"
               onClick={handleSubmitReview}
               disabled={submitting}
-              className="flex-1 bg-gradient-to-r from-green-500 to-blue-600 text-white py-3 rounded-xl hover:from-green-600 hover:to-blue-700 font-semibold shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 bg-gradient-to-r from-[#5FA889] to-[#4A9FBE] dark:from-[#7DBFA0] dark:to-[#6BB3CF] text-white py-3 rounded-xl hover:from-[#4D8A6F] hover:to-[#3A7C96] dark:hover:from-[#5FA889] dark:hover:to-[#4A9FBE] font-semibold shadow-md disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
             >
               {submitting ? (
                 <>
@@ -323,30 +304,29 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
   // Reviews List View
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="border-b pb-4">
-        <h2 className="text-2xl font-bold text-gray-800 mb-1">Customer Reviews</h2>
-        <p className="text-gray-600">{productName}</p>
+      <div className="border-b border-[#D8DEE6] dark:border-[#3A4555] pb-4">
+        <h2 className="text-2xl font-bold text-[#2C3847] dark:text-[#E5E9EF] mb-1">Customer Reviews</h2>
+        <p className="text-[#4A5568] dark:text-[#D1D8E0]">{productName}</p>
       </div>
 
       {/* Rating Summary */}
-      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border">
+      <div className="bg-gradient-to-r from-[#EDF2F7] to-[#EEF5F7] dark:from-[#242D3C] dark:to-[#1A2332] rounded-xl p-6 border border-[#D8DEE6] dark:border-[#3A4555]">
         <div className="flex items-center gap-8">
           <div className="text-center">
-            <p className="text-5xl font-bold text-blue-600">{getAverageRating()}</p>
+            <p className="text-5xl font-bold text-[#4A9FBE] dark:text-[#6BB3CF]">{getAverageRating()}</p>
             <div className="my-2 flex justify-center">{renderStars(Math.round(Number(getAverageRating())), 'lg')}</div>
-            <p className="text-sm text-gray-600">{reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}</p>
+            <p className="text-sm text-[#4A5568] dark:text-[#D1D8E0]">{reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}</p>
           </div>
           <div className="flex-1">
             {canWriteReview ? (
               <div className="text-center">
-                <p className="text-gray-700 mb-3">
+                <p className="text-[#2C3847] dark:text-[#E5E9EF] mb-3">
                   {userExistingReview ? 'You have already reviewed this product' : 'Share your experience with this product'}
                 </p>
                 <button
                   type="button"
                   onClick={handleStartReview}
-                  className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-3 rounded-lg hover:from-yellow-500 hover:to-orange-600 font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2 mx-auto"
+                  className="bg-gradient-to-r from-[#D4A855] to-[#D97B7B] dark:from-[#D4A855] dark:to-[#E59595] text-white px-6 py-3 rounded-lg hover:from-[#C69945] hover:to-[#C66A6A] font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2 mx-auto"
                 >
                   {userExistingReview ? (
                     <>
@@ -362,10 +342,10 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
                 </button>
               </div>
             ) : (
-              <div className="text-center bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <ShoppingBag className="w-8 h-8 text-amber-600 mx-auto mb-2" />
-                <p className="font-semibold text-amber-800 mb-1">Purchase Required</p>
-                <p className="text-sm text-amber-700">
+              <div className="text-center bg-[#F5E3E3] dark:bg-[#4D3333] border border-[#D97B7B] dark:border-[#8A4A4A] rounded-lg p-4">
+                <ShoppingBag className="w-8 h-8 text-[#8A4A4A] dark:text-[#E8C0C0] mx-auto mb-2" />
+                <p className="font-semibold text-[#8A4A4A] dark:text-[#E8C0C0] mb-1">Purchase Required</p>
+                <p className="text-sm text-[#8A4A4A] dark:text-[#E8C0C0]">
                   You need to purchase and receive this product before you can leave a review.
                 </p>
               </div>
@@ -377,19 +357,19 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
       {/* Reviews List */}
       {loading ? (
         <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
-          <p className="text-gray-500">Loading reviews...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4A9FBE] dark:border-[#6BB3CF] mx-auto mb-3"></div>
+          <p className="text-[#6B7A8F] dark:text-[#8A99AA]">Loading reviews...</p>
         </div>
       ) : reviews.length === 0 ? (
-        <div className="text-center py-8 bg-gray-50 rounded-xl">
+        <div className="text-center py-8 bg-[#EDF2F7] dark:bg-[#1A2332] rounded-xl">
           <p className="text-6xl mb-3">⭐</p>
-          <p className="text-gray-600 mb-2 text-lg">No reviews yet</p>
-          <p className="text-gray-500 text-sm mb-4">Be the first to share your experience!</p>
+          <p className="text-[#4A5568] dark:text-[#D1D8E0] mb-2 text-lg">No reviews yet</p>
+          <p className="text-[#6B7A8F] dark:text-[#8A99AA] text-sm mb-4">Be the first to share your experience!</p>
           {canWriteReview && (
             <button
               type="button"
               onClick={handleStartReview}
-              className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 font-medium shadow-md"
+              className="bg-[#4A9FBE] dark:bg-[#6BB3CF] text-white px-6 py-2 rounded-lg hover:bg-[#3A7C96] dark:hover:bg-[#4A9FBE] font-medium shadow-md transition-colors"
             >
               Write First Review
             </button>
@@ -401,29 +381,31 @@ function ProductReviews({ productId, productName, onClose, userHasDeliveredOrder
             <div
               key={review.id}
               className={`border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow ${
-                review.user_id === currentUserId ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'
+                review.user_id === currentUserId 
+                  ? 'border-[#4A9FBE] dark:border-[#6BB3CF] bg-[#EEF5F7] dark:bg-[#1A2332]' 
+                  : 'border-[#D8DEE6] dark:border-[#3A4555] bg-[#FAFBFC] dark:bg-[#242D3C]'
               }`}
             >
               <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     {renderStars(review.rating)}
-                    <span className="font-medium text-gray-700">
+                    <span className="font-medium text-[#2C3847] dark:text-[#E5E9EF]">
                       {review.user_name || 'Anonymous'}
                       {review.user_id === currentUserId && (
-                        <span className="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded">You</span>
+                        <span className="ml-2 text-xs bg-[#4A9FBE] dark:bg-[#6BB3CF] text-white px-2 py-0.5 rounded">You</span>
                       )}
                     </span>
                   </div>
                   {review.review_text && (
-                    <p className="text-gray-700 mt-2 leading-relaxed">{review.review_text}</p>
+                    <p className="text-[#4A5568] dark:text-[#D1D8E0] mt-2 leading-relaxed">{review.review_text}</p>
                   )}
                 </div>
-                <span className="text-xs text-gray-500 whitespace-nowrap ml-4">
+                <span className="text-xs text-[#6B7A8F] dark:text-[#8A99AA] whitespace-nowrap ml-4">
                   {formatDate(review.created_at)}
                 </span>
               </div>
-              <div className="text-xs text-gray-500">Verified Purchase ✓</div>
+              <div className="text-xs text-[#5FA889] dark:text-[#7DBFA0]">Verified Purchase ✓</div>
             </div>
           ))}
         </div>

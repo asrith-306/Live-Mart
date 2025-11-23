@@ -74,39 +74,35 @@ export default function Login({ onLogin }: LoginProps) {
     setProfile(prev => ({ ...prev, [name]: value }))
   }
 
-  // Update the handleSubmit function in your Login.tsx file:
-
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  setLoading(true)
-  setError(null)
-  
-  try {
-    // Send magic link to email
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: form.email.trim().toLowerCase(), // Ensure clean email
-      options: {
-        // IMPORTANT: Use the correct callback URL
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-        // Don't require email verification for magic links
-        shouldCreateUser: true
-      }
-    });
-
-    if (otpError) {
-      console.error("OTP Error:", otpError);
-      throw otpError;
-    }
-
-    setEmailSent(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
     
-  } catch (err: any) {
-    console.error("Login error:", err);
-    setError(err.message || "Failed to send magic link. Please try again.");
-  } finally {
-    setLoading(false)
+    try {
+      // Send magic link to email
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: form.email.trim().toLowerCase(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          shouldCreateUser: true
+        }
+      });
+
+      if (otpError) {
+        console.error("OTP Error:", otpError);
+        throw otpError;
+      }
+
+      setEmailSent(true);
+      
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError(err.message || "Failed to send magic link. Please try again.");
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
   const handleGoogleLogin = async () => {
     try {
@@ -149,32 +145,32 @@ const handleSubmit = async (e: React.FormEvent) => {
   // Show email sent confirmation
   if (emailSent) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
-          <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="bg-card rounded-2xl shadow-lg border border-border p-8 max-w-md w-full text-center">
+          <div className="bg-accent/20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
           </div>
           
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
+          <h2 className="text-2xl font-bold text-foreground mb-4">
             Check Your Email! 📧
           </h2>
           
-          <p className="text-gray-600 mb-2">
+          <p className="text-muted-foreground mb-2">
             We've sent a magic link to
           </p>
-          <p className="text-blue-600 font-semibold mb-6">{form.email}</p>
+          <p className="text-primary font-semibold mb-6">{form.email}</p>
           
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <p className="text-sm text-gray-700">
+          <div className="alert-success p-4 mb-6 rounded-lg">
+            <p className="text-sm">
               Click the link in your email to securely log in. The link will expire in 60 minutes.
             </p>
           </div>
 
           <button
             onClick={() => setEmailSent(false)}
-            className="text-blue-600 font-semibold hover:underline"
+            className="text-primary font-semibold hover:text-[hsl(var(--link-hover))] transition-colors"
           >
             ← Back to Login
           </button>
@@ -186,9 +182,9 @@ const handleSubmit = async (e: React.FormEvent) => {
   // Show profile form if new Google user
   if (showProfileForm) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
-          <h2 className="text-2xl font-bold text-center mb-6">Complete Your Profile</h2>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="bg-card rounded-2xl shadow-lg border border-border p-8 max-w-md w-full">
+          <h2 className="text-2xl font-bold text-center text-foreground mb-6">Complete Your Profile</h2>
 
           <form onSubmit={handleProfileSubmit} className="space-y-4">
             <input
@@ -196,7 +192,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               placeholder="Full Name"
               value={profile.name}
               onChange={handleProfileChange}
-              className="border p-3 w-full rounded-lg"
+              className="border border-input bg-background text-foreground p-3 w-full rounded-lg focus-primary transition-base"
               required
             />
 
@@ -205,7 +201,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               placeholder="Phone Number"
               value={profile.phone}
               onChange={handleProfileChange}
-              className="border p-3 w-full rounded-lg"
+              className="border border-input bg-background text-foreground p-3 w-full rounded-lg focus-primary transition-base"
               required
             />
 
@@ -213,7 +209,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               name="role"
               value={profile.role}
               onChange={handleProfileChange}
-              className="border p-3 w-full rounded-lg"
+              className="border border-input bg-background text-foreground p-3 w-full rounded-lg focus-primary transition-base"
             >
               <option value="customer">Customer</option>
               <option value="retailer">Retailer</option>
@@ -225,19 +221,19 @@ const handleSubmit = async (e: React.FormEvent) => {
               placeholder="Location"
               value={profile.location}
               onChange={handleProfileChange}
-              className="border p-3 w-full rounded-lg"
+              className="border border-input bg-background text-foreground p-3 w-full rounded-lg focus-primary transition-base"
               required
             />
 
             <button
               type="submit"
               disabled={loading}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-lg w-full font-semibold"
+              className="gradient-primary text-white px-4 py-3 rounded-lg w-full font-semibold hover:shadow-button-hover transition-all"
             >
               {loading ? "Saving..." : "Save Profile"}
             </button>
 
-            {error && <p className="text-red-600 text-center">{error}</p>}
+            {error && <p className="text-secondary text-center text-sm">{error}</p>}
           </form>
         </div>
       </div>
@@ -246,22 +242,22 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   // Default: Login page with Magic Link
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
-        <h1 className="text-3xl font-bold text-center mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="bg-card rounded-2xl shadow-lg border border-border p-8 max-w-md w-full">
+        <h1 className="text-3xl font-bold text-center mb-2 text-foreground">
           Welcome Back
         </h1>
-        <p className="text-center text-gray-600 mb-6">Login to Live MART</p>
+        <p className="text-center text-muted-foreground mb-6">Login to Live MART</p>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+          <div className="alert-warning px-4 py-3 rounded-lg mb-4">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Email Address
             </label>
             <input
@@ -270,7 +266,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               placeholder="your@email.com"
               value={form.email}
               onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 bg-background border border-input rounded-lg focus-primary transition-base text-foreground"
               required
             />
           </div>
@@ -278,21 +274,21 @@ const handleSubmit = async (e: React.FormEvent) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+            className="w-full gradient-primary text-white font-semibold py-3 rounded-lg hover:shadow-button-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
           >
             {loading ? "Sending Magic Link..." : "Login with Email"}
           </button>
         </form>
 
         <div className="my-6 flex items-center">
-          <div className="flex-1 border-t border-gray-300"></div>
-          <span className="px-4 text-gray-500 text-sm">OR</span>
-          <div className="flex-1 border-t border-gray-300"></div>
+          <div className="flex-1 border-t border-border"></div>
+          <span className="px-4 text-muted-foreground text-sm">OR</span>
+          <div className="flex-1 border-t border-border"></div>
         </div>
 
         <button
           onClick={handleGoogleLogin}
-          className="w-full bg-white border-2 border-gray-300 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-50 transition-all shadow-sm flex items-center justify-center gap-2"
+          className="w-full bg-card border-2 border-border text-foreground font-semibold py-3 rounded-lg hover:bg-muted transition-all shadow-sm flex items-center justify-center gap-2"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -303,11 +299,11 @@ const handleSubmit = async (e: React.FormEvent) => {
           Continue with Google
         </button>
 
-        <p className="text-center text-gray-600 mt-6">
+        <p className="text-center text-muted-foreground mt-6">
           Don't have an account?{" "}
           <button
             onClick={() => navigate("/signup")}
-            className="text-blue-600 font-semibold hover:underline"
+            className="text-primary font-semibold hover:text-[hsl(var(--link-hover))] transition-colors"
           >
             Sign Up
           </button>
