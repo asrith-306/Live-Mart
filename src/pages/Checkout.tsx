@@ -18,6 +18,14 @@ interface FormData {
   paymentMethod: 'online' | 'offline';
   latitude?: number;
   longitude?: number;
+  couponCode?: string;
+}
+
+interface CouponState {
+  code: string;
+  applied: boolean;
+  isValid: boolean | null;
+  discount: number;
 }
 
 
@@ -203,6 +211,12 @@ function Checkout() {
   const [calendarLinked, setCalendarLinked] = useState(false);
   const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
   const [showRecommendations, setShowRecommendations] = useState(false);
+  const [coupon, setCoupon] = useState<CouponState>({
+    code: '',
+    applied: false,
+    isValid: null,
+    discount: 0,
+  });
  
   // Stripe payment state
   const [showStripeForm, setShowStripeForm] = useState(false);
@@ -211,15 +225,18 @@ function Checkout() {
 
 
   const [formData, setFormData] = useState<FormData>({
-    phone: '',
-    address: '',
-    paymentMethod: 'online',
-    latitude: 17.385044,
-    longitude: 78.486671,
-  });
+  phone: '',
+  address: '',
+  paymentMethod: 'online',
+  latitude: 17.385044,
+  longitude: 78.486671,
+  couponCode: '',
+});
 
-
-  const totalPrice = getCartTotal() + 40;
+const subtotal = getCartTotal();
+const deliveryFee = 40;
+const discount = coupon.applied ? (subtotal * coupon.discount) / 100 : 0;
+const totalPrice = subtotal + deliveryFee - discount;
 
 
   // Load recommendations
@@ -306,6 +323,34 @@ function Checkout() {
     setCalendarLinked(true);
   };
 
+  const handleApplyCoupon = () => {
+  const code = coupon.code.trim().toUpperCase();
+  
+  if (code === 'LIVEMART10') {
+    setCoupon({
+      ...coupon,
+      applied: true,
+      isValid: true,
+      discount: 10,
+    });
+  } else {
+    setCoupon({
+      ...coupon,
+      applied: false,
+      isValid: false,
+      discount: 0,
+    });
+  }
+};
+
+const handleRemoveCoupon = () => {
+  setCoupon({
+    code: '',
+    applied: false,
+    isValid: null,
+    discount: 0,
+  });
+};
 
   // Handle form submission
   const handleSubmit = async (e: FormEvent) => {
@@ -674,6 +719,69 @@ function Checkout() {
                   </div>
                 </div>
 
+                {/* Coupon Code */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <label className="block font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-purple-600" />
+                    Have a Coupon Code?
+                  </label>
+                  
+                  {!coupon.applied ? (
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={coupon.code}
+                          onChange={(e) => setCoupon({ ...coupon, code: e.target.value.toUpperCase(), isValid: null })}
+                          placeholder="Enter coupon code"
+                          className="flex-1 border-2 border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent uppercase"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleApplyCoupon}
+                          disabled={!coupon.code.trim()}
+                          className="bg-gradient-to-r from-purple-500 to-blue-600 text-white px-6 py-3 rounded-lg hover:from-purple-600 hover:to-blue-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                      
+                      {coupon.isValid === false && (
+                        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-3 flex items-center gap-2">
+                          <X className="w-5 h-5 text-red-600 flex-shrink-0" />
+                          <p className="text-sm text-red-700 font-semibold">Invalid coupon code. Please try again.</p>
+                        </div>
+                      )}
+                      
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                        <p className="text-xs text-purple-800">
+                          💡 Try <span className="font-bold">LIVEMART10</span> for 10% off
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-green-50 border-2 border-green-500 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="bg-green-500 rounded-full p-1">
+                            <Check className="w-4 h-4 text-white" />
+                          </div>
+                          <span className="font-semibold text-green-800">Coupon Applied!</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemoveCoupon}
+                          className="text-green-700 hover:text-green-900 text-sm font-semibold"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <p className="text-sm text-green-700">
+                        🎉 <span className="font-bold">{coupon.code}</span> - You're saving {coupon.discount}% (₹{discount.toFixed(2)})
+                      </p>
+                    </div>
+                  )}
+                </div> 
 
                 {/* Submit Button */}
                 <button
@@ -709,12 +817,21 @@ function Checkout() {
               <div className="border-t pt-3 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Subtotal</span>
-                  <span className="font-semibold">₹{getCartTotal().toFixed(2)}</span>
+                  <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Delivery Fee</span>
-                  <span className="font-semibold">₹40.00</span>
+                  <span className="font-semibold">₹{deliveryFee.toFixed(2)}</span>
                 </div>
+                {coupon.applied && discount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-green-600 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      Discount ({coupon.discount}%)
+                    </span>
+                    <span className="font-semibold text-green-600">-₹{discount.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="border-t pt-2 flex justify-between">
                   <span className="font-bold text-lg text-gray-800">Total</span>
                   <span className="font-bold text-2xl text-blue-600">₹{totalPrice.toFixed(2)}</span>
