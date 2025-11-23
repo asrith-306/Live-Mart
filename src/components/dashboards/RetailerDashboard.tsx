@@ -1,4 +1,4 @@
-// src/components/dashboards/RetailerDashboard.tsx - Updated with new color scheme
+// src/components/dashboards/RetailerDashboard.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -12,9 +12,10 @@ import {
   permanentlyDeleteProduct,
   Product 
 } from '@/services/productService';
+import { fetchRetailerEarnings, EarningsData } from '@/services/earningsService';
 import ProductCard from '@/components/products/ProductCard';
 import ProductForm from '@/components/products/ProductForm';
-import { Package, ShoppingCart, Truck, Eye, EyeOff, MessageCircle } from 'lucide-react';
+import { Package, ShoppingCart, Truck, Eye, EyeOff, MessageCircle, DollarSign } from 'lucide-react';
 
 const RetailerDashboard = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -31,11 +32,27 @@ const RetailerDashboard = () => {
   });
   const [submitting, setSubmitting] = useState(false);
   const [proxyMode, setProxyMode] = useState(false);
+  const [earnings, setEarnings] = useState<EarningsData | null>(null);
+  const [earningsLoading, setEarningsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     loadProducts();
   }, [viewMode]);
+
+  useEffect(() => {
+    const loadEarnings = async () => {
+      try {
+        const data = await fetchRetailerEarnings();
+        setEarnings(data);
+      } catch (error) {
+        console.error('Failed to load earnings:', error);
+      } finally {
+        setEarningsLoading(false);
+      }
+    };
+    loadEarnings();
+  }, []);
 
   const loadProducts = async () => {
     try {
@@ -213,7 +230,30 @@ const RetailerDashboard = () => {
       {/* Quick Actions Banner */}
       <div className="gradient-hero rounded-lg shadow-lg p-6 mb-6">
         <h2 className="text-white text-2xl font-bold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {/* Total Earnings */}
+          <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-4 text-white">
+            <div className="flex items-center gap-3 mb-2">
+              <DollarSign className="w-6 h-6" />
+              <h3 className="font-semibold text-lg">Earnings</h3>
+            </div>
+            {earningsLoading ? (
+              <p className="text-sm text-white text-opacity-90 mb-3">Loading...</p>
+            ) : (
+              <>
+                <p className="text-2xl font-bold mb-1">
+                  ₹{earnings?.totalEarnings.toLocaleString('en-IN') || '0'}
+                </p>
+                <p className="text-xs text-white text-opacity-75 mb-1">
+                  Pending: ₹{earnings?.pendingEarnings.toLocaleString('en-IN') || '0'}
+                </p>
+                <div className="text-xs text-white text-opacity-75">
+                  {earnings?.totalOrders || 0} completed orders
+                </div>
+              </>
+            )}
+          </div>
+
           {/* Manage Products */}
           <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-4 text-white">
             <div className="flex items-center gap-3 mb-2">
@@ -276,7 +316,7 @@ const RetailerDashboard = () => {
             </p>
             <button
               onClick={() => navigate('/retailer/queries')}
-              className="w-full bg-white text-neutral py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
+              className="w-full bg-white text-accent py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-all"
             >
               View Queries
             </button>
