@@ -42,6 +42,10 @@ function ProtectedRoute({ children, allowedRoles, userRole }: { children: React.
   return <>{children}</>;
 }
 
+// Replace the Navbar function in your App.tsx with this updated version
+
+// Replace the Navbar function in your App.tsx with this updated version
+
 function Navbar({ isLoggedIn, onLogout, userRole }: { isLoggedIn: boolean; onLogout: () => void; userRole: UserRole; }) {
   const { getCartCount } = useCart();
   const navigate = useNavigate();
@@ -64,9 +68,28 @@ function Navbar({ isLoggedIn, onLogout, userRole }: { isLoggedIn: boolean; onLog
     return (
       <nav className="gradient-hero shadow-lg p-4 mb-0">
         <div className="container mx-auto flex justify-between items-center">
-          <button onClick={() => navigate("/")} className="text-2xl font-bold text-white hover:scale-105 transition-transform cursor-pointer flex items-center gap-2">
-            🛒 Live MART
+          {/* Logo with Image */}
+          <button 
+            onClick={() => navigate("/")} 
+            className="flex items-center gap-3 hover:scale-105 transition-transform cursor-pointer"
+          >
+            <img 
+              src="/logo.png" 
+              alt="Live MART Logo" 
+              className="h-16 w-16 object-contain rounded-lg"
+              onError={(e) => {
+                // Fallback to emoji if image fails to load
+                e.currentTarget.style.display = 'none';
+                const fallbackEmoji = e.currentTarget.nextElementSibling;
+                if (fallbackEmoji && fallbackEmoji instanceof HTMLElement) {
+                  fallbackEmoji.style.display = 'inline';
+                }
+              }}
+            />
+            <span className="text-3xl" style={{ display: 'none' }}>🛒</span>
+            <span className="text-2xl font-bold text-white">Live MART</span>
           </button>
+
           <div className="flex gap-4 items-center">
             {/* Theme Toggle */}
             <button 
@@ -105,8 +128,26 @@ function Navbar({ isLoggedIn, onLogout, userRole }: { isLoggedIn: boolean; onLog
   return (
     <nav className="gradient-hero shadow-lg p-4 mb-0 relative">
       <div className="container mx-auto flex justify-between items-center">
-        <button onClick={() => handleNavigation("/")} className="text-2xl font-bold text-white hover:scale-105 transition-transform cursor-pointer flex items-center gap-2">
-          🛒 Live MART
+        {/* Logo with Image */}
+        <button 
+          onClick={() => handleNavigation("/")} 
+          className="flex items-center gap-3 hover:scale-105 transition-transform cursor-pointer"
+        >
+          <img 
+            src="/logo.png" 
+            alt="Live MART Logo" 
+            className="h-16 w-16 object-contain rounded-lg"
+            onError={(e) => {
+              // Fallback to emoji if image fails to load
+              e.currentTarget.style.display = 'none';
+              const fallbackEmoji = e.currentTarget.nextElementSibling;
+              if (fallbackEmoji && fallbackEmoji instanceof HTMLElement) {
+                fallbackEmoji.style.display = 'inline';
+              }
+            }}
+          />
+          <span className="text-3xl" style={{ display: 'none' }}>🛒</span>
+          <span className="text-2xl font-bold text-white">Live MART</span>
         </button>
         
         {/* Cart Icon for Customers - Always visible on right */}
