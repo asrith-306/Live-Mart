@@ -6,7 +6,8 @@ import { supabase } from '@/utils/supabaseClient';
 interface OrderDetails {
   id: string;
   status: string;
-  total_amount: number;
+  total_price: number; 
+  discount_amount: number;
   delivery_address: string;
   created_at: string;
   customer_name?: string;
@@ -365,8 +366,18 @@ const OrderTracking: React.FC = () => {
           <div className="space-y-4">
             <div className="flex justify-between items-center pb-4 border-b border-[#D8DEE6] dark:border-[#3A4555]">
               <span className="text-[#6B7A8F] dark:text-[#8A99AA] text-lg">Total Amount</span>
-              <span className="text-3xl font-bold text-[#4A9FBE] dark:text-[#6BB3CF]">₹{order.total_amount}</span>
+              <span className="text-3xl font-bold text-[#4A9FBE] dark:text-[#6BB3CF]">
+                ₹{order.total_price ? Number(order.total_price).toFixed(2) : '0.00'}
+              </span>
             </div>
+            {order.discount_amount > 0 && (
+              <div className="flex justify-between items-center pb-4 border-b border-[#D8DEE6] dark:border-[#3A4555]">
+                <span className="text-[#6B7A8F] dark:text-[#8A99AA] text-lg">Discount Applied</span>
+                <span className="text-lg font-semibold text-[#5FA889] dark:text-[#7DBFA0]">
+                  -₹{Number(order.discount_amount).toFixed(2)}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between items-center pb-4 border-b border-[#D8DEE6] dark:border-[#3A4555]">
               <span className="text-[#6B7A8F] dark:text-[#8A99AA] text-lg">Order Date</span>
               <span className="text-[#2C3847] dark:text-[#E5E9EF] font-semibold">
