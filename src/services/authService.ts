@@ -38,6 +38,7 @@ export async function signUpUser(form: SignupForm) {
     email: form.email,
     password: form.password,
     options: {
+      emailRedirectTo: `${window.location.origin}/auth/callback`,
       data: {
         name: form.name,
         role: form.role,
