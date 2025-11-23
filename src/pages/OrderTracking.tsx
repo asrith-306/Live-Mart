@@ -105,7 +105,7 @@ const OrderTracking: React.FC = () => {
         isActive: index === currentIndex,
         displayTime: hasOccurred 
           ? step.time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-          : `Expected: ${step.time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
+          : `Updated soon`
       };
     });
   };
