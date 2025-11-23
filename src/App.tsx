@@ -16,7 +16,6 @@ import { useCart } from "./context/CartContext";
 import OrderTracking from "./pages/OrderTracking";
 import DeliveryPartnerDashboard from './pages/DeliveryPartnerDashboard';
 import OrderManagement from "./components/order-management";
-import AuthCallback from "./components/AuthCallback";
 import MockPaymentGateway from "./MockPaymentGateway";
 import Queries from "./pages/Queries";
 import QueryDetails from "./pages/QueryDetails";
@@ -26,6 +25,10 @@ import ProfilePage from "./pages/ProfilePage";
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import './index.css';
 import FAQ from './pages/FAQ';
+import AuthCallback from "./pages/AuthCallback";
+
+<Route path="/auth/callback" element={<AuthCallback />} />
+
 
 type UserRole = "customer" | "retailer" | "wholesaler" | "delivery_partner" | null;
 
