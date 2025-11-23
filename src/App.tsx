@@ -27,7 +27,7 @@ import './index.css';
 import FAQ from './pages/FAQ';
 import AuthCallback from "./pages/AuthCallback";
 
-<Route path="/auth/callback" element={<AuthCallback />} />
+
 
 
 type UserRole = "customer" | "retailer" | "wholesaler" | "delivery_partner" | null;

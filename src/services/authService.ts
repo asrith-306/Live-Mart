@@ -74,7 +74,7 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: "https://live-mart-tawny.vercel.app", // replace with your app URL when deployed
+        redirectTo: `${window.location.origin}/auth/callback`,
     },
   })
 
@@ -95,7 +95,7 @@ export async function loginWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.origin + '/login', // return to your login page
+      redirectTo: `${window.location.origin}/auth/callback`,
     },
   })
   if (error) throw error
