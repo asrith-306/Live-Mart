@@ -384,10 +384,7 @@ const OrderTracking: React.FC = () => {
                 {new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
-            <div className="flex justify-between items-center pb-4 border-b border-[#D8DEE6] dark:border-[#3A4555]">
-              <span className="text-[#6B7A8F] dark:text-[#8A99AA] text-lg">Delivery Timeline</span>
-              <span className="text-[#2C3847] dark:text-[#E5E9EF] font-semibold">7 Days Standard</span>
-            </div>
+            
             <div className="flex justify-between items-center">
               <span className="text-[#6B7A8F] dark:text-[#8A99AA] text-lg">Payment Status</span>
               <span className="px-4 py-2 bg-[#D9EDE5] dark:bg-[#1A2332] text-[#3A6B56] dark:text-[#B8E6D5] font-semibold rounded-full">
