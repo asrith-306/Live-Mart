@@ -13,7 +13,7 @@ type ProfileForm = {
 }
 
 interface LoginProps {
-  onLogin?: (id: string) => void;
+  onLogin?: (id: string) => void | Promise<void>;
   userRole?: string | null;
 }
 
@@ -31,38 +31,61 @@ export default function Login({ onLogin }: LoginProps) {
     location: "",
   })
 
-  // When user returns from Google login
+  // Helper function to get dashboard path
+  const getDashboardPath = (role: string): string => {
+    switch (role) {
+      case "customer":
+        return "/customer";
+      case "retailer":
+        return "/retailer";
+      case "wholesaler":
+        return "/wholesaler";
+      case "delivery_partner":
+        return "/delivery-dashboard";
+      default:
+        return "/customer";
+    }
+  };
+
+  const redirectBasedOnRole = (role: string) => {
+    const path = getDashboardPath(role);
+    console.log("Redirecting to:", path, "for role:", role);
+    navigate(path, { replace: true });
+  };
+
+  // When user returns from magic link or Google login
   useEffect(() => {
     const checkSession = async () => {
-      const { data } = await supabase.auth.getUser()
-      const user = data.user
-      if (!user) return
+      try {
+        const { data } = await supabase.auth.getUser()
+        const user = data.user
+        if (!user) return
 
-      // Check if user exists in users table
-      const existing = await checkUserExists(user.id)
-      if (!existing) {
-        setShowProfileForm(true)
-      } else {
-        if (onLogin) onLogin(user.id);
-        redirectBasedOnRole(existing.role);
+        console.log("User found:", user.id);
+
+        // Check if user exists in users table
+        const existing = await checkUserExists(user.id)
+        console.log("Existing user data:", existing);
+
+        if (!existing) {
+          console.log("No profile found, showing profile form");
+          setShowProfileForm(true)
+        } else {
+          console.log("Profile exists, redirecting based on role:", existing.role);
+          if (onLogin) {
+            onLogin(user.id);
+          }
+          // Small delay to ensure state updates
+          setTimeout(() => {
+            redirectBasedOnRole(existing.role);
+          }, 100);
+        }
+      } catch (err) {
+        console.error("Error checking session:", err);
       }
     }
     checkSession()
   }, [])
-
-  const redirectBasedOnRole = (role: string) => {
-    if (role === "customer") {
-      navigate("/customer");
-    } else if (role === "retailer") {
-      navigate("/retailer");
-    } else if (role === "wholesaler") {
-      navigate("/wholesaler");
-    } else if (role === "delivery_partner") {
-      navigate("/delivery-dashboard");
-    } else {
-      navigate("/customer");
-    }
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -106,19 +129,25 @@ export default function Login({ onLogin }: LoginProps) {
 
   const handleGoogleLogin = async () => {
     try {
+      setLoading(true);
       await loginWithGoogle()
     } catch (err: any) {
       setError(err.message)
+      setLoading(false);
     }
   }
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setError(null)
+    
     try {
       const { data } = await supabase.auth.getUser()
       const user = data.user
       if (!user) throw new Error("No authenticated user found")
+
+      console.log("Creating profile for user:", user.id, "with role:", profile.role);
 
       await createUserProfile({
         auth_id: user.id,
@@ -133,9 +162,13 @@ export default function Login({ onLogin }: LoginProps) {
         onLogin(user.id);
       }
       
-      redirectBasedOnRole(profile.role);
+      // Small delay to ensure profile is saved
+      setTimeout(() => {
+        redirectBasedOnRole(profile.role);
+      }, 100);
       
     } catch (err: any) {
+      console.error("Profile creation error:", err);
       setError(err.message)
     } finally {
       setLoading(false)
@@ -228,7 +261,7 @@ export default function Login({ onLogin }: LoginProps) {
             <button
               type="submit"
               disabled={loading}
-              className="gradient-primary text-white px-4 py-3 rounded-lg w-full font-semibold hover:shadow-button-hover transition-all"
+              className="gradient-primary text-white px-4 py-3 rounded-lg w-full font-semibold hover:shadow-button-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Saving..." : "Save Profile"}
             </button>
@@ -288,7 +321,8 @@ export default function Login({ onLogin }: LoginProps) {
 
         <button
           onClick={handleGoogleLogin}
-          className="w-full bg-card border-2 border-border text-foreground font-semibold py-3 rounded-lg hover:bg-muted transition-all shadow-sm flex items-center justify-center gap-2"
+          disabled={loading}
+          className="w-full bg-card border-2 border-border text-foreground font-semibold py-3 rounded-lg hover:bg-muted transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -296,7 +330,7 @@ export default function Login({ onLogin }: LoginProps) {
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
-          Continue with Google
+          {loading ? "Loading..." : "Continue with Google"}
         </button>
 
         <p className="text-center text-muted-foreground mt-6">

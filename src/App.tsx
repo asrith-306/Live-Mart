@@ -488,7 +488,7 @@ function AppContent() {
             } 
           />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/login" element={<Login onLogin={handleLogin} userRole={userRole} />} />
+          <Route path="/login" element={<Login onLogin={handleLogin} />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           
           {/* Product Detail Page - accessible to everyone */}
