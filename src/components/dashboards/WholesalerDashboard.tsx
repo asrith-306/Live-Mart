@@ -1,6 +1,7 @@
-// src/components/dashboards/WholesalerDashboard.tsx - Updated with new color scheme
+// src/components/dashboards/WholesalerDashboard.tsx
 import { useState, useEffect } from 'react';
 import { supabase } from '../../utils/supabaseClient';
+import { fetchWholesalerEarnings, EarningsData } from '@/services/earningsService';
 
 interface Product {
   id: string;
@@ -77,6 +78,8 @@ export default function WholesalerDashboard() {
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [earnings, setEarnings] = useState<EarningsData | null>(null);
+  const [earningsLoading, setEarningsLoading] = useState(true);
   
   const [productForm, setProductForm] = useState<ProductForm>({
     name: '',
@@ -94,8 +97,20 @@ export default function WholesalerDashboard() {
   useEffect(() => {
     if (currentUserId) {
       fetchData();
+      loadEarnings();
     }
   }, [currentUserId, activeTab]);
+
+  const loadEarnings = async () => {
+    try {
+      const data = await fetchWholesalerEarnings();
+      setEarnings(data);
+    } catch (error) {
+      console.error('Failed to load earnings:', error);
+    } finally {
+      setEarningsLoading(false);
+    }
+  };
 
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -369,7 +384,86 @@ export default function WholesalerDashboard() {
         </div>
       </div>
 
+      {/* Earnings Summary Cards */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          {/* Total Earnings */}
+          <div className="gradient-hero rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-white text-opacity-80">Total Earnings</p>
+                {earningsLoading ? (
+                  <p className="text-2xl font-bold mt-1">Loading...</p>
+                ) : (
+                  <p className="text-2xl font-bold mt-1">
+                    ₹{earnings?.totalEarnings.toLocaleString('en-IN') || '0'}
+                  </p>
+                )}
+              </div>
+              <div className="bg-white bg-opacity-20 rounded-full p-3">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Pending Earnings */}
+          <div className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-white text-opacity-80">Pending Earnings</p>
+                {earningsLoading ? (
+                  <p className="text-2xl font-bold mt-1">Loading...</p>
+                ) : (
+                  <p className="text-2xl font-bold mt-1">
+                    ₹{earnings?.pendingEarnings.toLocaleString('en-IN') || '0'}
+                  </p>
+                )}
+              </div>
+              <div className="bg-white bg-opacity-20 rounded-full p-3">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Total Orders */}
+          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-white text-opacity-80">Completed Orders</p>
+                {earningsLoading ? (
+                  <p className="text-2xl font-bold mt-1">Loading...</p>
+                ) : (
+                  <p className="text-2xl font-bold mt-1">{earnings?.totalOrders || 0}</p>
+                )}
+              </div>
+              <div className="bg-white bg-opacity-20 rounded-full p-3">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Total Products */}
+          <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-white text-opacity-80">Total Products</p>
+                <p className="text-2xl font-bold mt-1">{products.length}</p>
+              </div>
+              <div className="bg-white bg-opacity-20 rounded-full p-3">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="border-b border-border">
           <nav className="flex space-x-8">
             {(['inventory', 'retailers', 'transactions'] as const).map((tab) => (
@@ -398,7 +492,7 @@ export default function WholesalerDashboard() {
           </nav>
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 pb-8">
           {activeTab === 'inventory' && (
             <div>
               <div className="flex justify-between items-center mb-6">
